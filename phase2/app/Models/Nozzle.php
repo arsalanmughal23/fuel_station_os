@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Nozzle extends Model
+{
+    protected $fillable = [
+        'tank_id',
+        'name',
+    ];
+
+    public function tank(): BelongsTo
+    {
+        return $this->belongsTo(Tank::class);
+    }
+
+    public function readings(): HasMany
+    {
+        return $this->hasMany(NozzleReading::class);
+    }
+}
