@@ -1,0 +1,268 @@
+You are a Laravel 11 backend engineer working on a project called FuelStationOS.
+
+CONTEXT:
+I'm attaching an implementation_plan.md file describing an append-only ledger 
+architecture for a fuel station management system (Laravel 11 + NativePHP + 
+Nuxt 3 + SQLite). Read it fully before doing anything.
+
+YOUR TASK:
+Generate the Laravel migrations and Eloquent models for the ERD in Section 3 only.
+
+Generate the Laravel migrations and Eloquent models for the ERD in Section 3 
+only. Follow the append-only ledger rules described in Section 2 exactly — 
+`calculated_stock` and `current_balance` must never be directly writable 
+columns; they are derived values.
+
+RULES YOU MUST FOLLOW:
+1. If anything in the plan is ambiguous, contradictory, or requires a decision 
+   only I can make, STOP and list it under a heading "OPEN QUESTIONS" instead 
+   of guessing or picking a default.
+2. Do not invent requirements not stated in the plan.
+3. Do not delete or modify any existing files — only generate new files in 
+   the output.
+4. Follow standard Laravel 11 conventions (migrations in database/migrations, 
+   models in app/Models, proper foreign key constraints, proper enum/string 
+   typing matching the ERD).
+5. After generating code, list a short "ASSUMPTIONS MADE" section for 
+   anything you inferred that wasn't explicitly spelled out, so I can correct 
+   you if wrong.
+
+OUTPUT FORMAT:
+- Code first, grouped by file with filename as a heading
+- Then "OPEN QUESTIONS" section (if any)
+- Then "ASSUMPTIONS MADE" section (if any)
+
+Do not proceed past this task. Do not attempt Phase 1 (deletion) or later 
+phases — this prompt covers Phase 2 database/models only.
+
+
+
+----------------------------------implementation_plan.md FILE STARTS HERE-------------------------------------------------------
+# Fuel Station OS - Planning & Architecture (Laravel + NativePHP Rewrite)
+
+Per your instructions, we are completely restarting the project with a new technology stack and a robust append-only ledger architecture. All previous Node.js/TypeScript code will be deleted before execution begins.
+
+## User Review Required
+
+> [!CAUTION]
+> Approving this plan will authorize the complete deletion of the existing `/var/www/html/desktop_app` contents (the previous Node.js backend) to start with a clean slate for Laravel and NativePHP. Please confirm you are ready to proceed with this destructive action.
+
+> [!IMPORTANT]
+> Please review the completely redesigned Append-Only Ledger architecture. `tanks.calculated_stock` and `accounts.current_balance` are now strictly derived values, ensuring bulletproof financial and inventory auditing.
+
+## Open Questions
+
+> [!WARNING]
+> NativePHP relies on Electron by default but supports Tauri experimentally. Are you comfortable using the experimental Tauri adapter for NativePHP, or would you prefer the stable Electron adapter given the strict requirement for a production-ready application? (I will proceed with Tauri as requested unless instructed otherwise).
+
+---
+
+## 1. Technology Stack
+
+* **Backend API & Business Logic:** Laravel 11.
+* **Desktop Wrapper:** NativePHP with Tauri adapter.
+* **Frontend:** Nuxt.js (Vue 3) communicating with Laravel via API.
+* **Database:** SQLite (embedded via NativePHP).
+* **Authentication:** Laravel Sanctum.
+* **Authorization:** `spatie/laravel-permission` (Admin, Manager, Staff roles).
+
+---
+
+## 2. Append-Only Ledger Architecture
+
+The core of this rewrite is the strict enforcement of **Append-Only Ledgers** for both Fuel Inventory and Financial Payments.
+
+1. **Stock Transactions (`stock_transactions`)**: The single source of truth for fuel inventory.
+   * `tanks.calculated_stock` is never updated directly by forms. It is derived from summing all transaction quantities for that tank.
+   * Modifying an entry is done by posting a reversing transaction (negative equivalent) linked via `reversed_transaction_id` and creating a new corrected entry.
+2. **Payment Transactions (`payment_transactions`)**: The single source of truth for money movement.
+   * Accounts (Distributors, Customers, Employees, Owner) have their `current_balance` derived entirely from linked payment transactions.
+
+---
+
+## 3. Entity-Relationship Diagram (ERD)
+
+```mermaid
+erDiagram
+    USERS {
+        int id PK
+        string username
+        string email
+        string password
+    }
+
+    FUEL_TYPES ||--o{ TANKS : "stored_in"
+    FUEL_TYPES {
+        int id PK
+        string name
+        decimal current_price
+    }
+
+    TANKS ||--o{ TANK_CALIBRATIONS : "has_dip_chart"
+    TANKS ||--o{ NOZZLES : "feeds"
+    TANKS ||--o{ STOCK_TRANSACTIONS : "moves"
+    TANKS ||--o{ DEEP_READINGS : "measured_by"
+    TANKS {
+        int id PK
+        int fuel_type_id FK
+        string name
+        decimal capacity_liters
+        decimal calculated_stock "derived from STOCK_TRANSACTIONS"
+    }
+
+    TANK_CALIBRATIONS {
+        int id PK
+        int tank_id FK
+        decimal deep_cm
+        decimal volume_liters
+    }
+
+    DEEP_READINGS {
+        int id PK
+        int tank_id FK
+        int user_id FK
+        decimal deep_cm
+        decimal calibrated_volume_liters
+        decimal system_stock_at_reading
+        decimal variance_liters
+        datetime recorded_at
+    }
+
+    USERS ||--o| ACCOUNTS : "has_account"
+    ACCOUNTS ||--o{ PURCHASE_ORDERS : "supplies"
+    ACCOUNTS ||--o{ PAYMENT_TRANSACTIONS : "settles_against"
+    ACCOUNTS {
+        int id PK
+        string account_type "distributor | customer | employee | owner"
+        int user_id FK
+        string name
+        string contact
+        decimal opening_balance
+        decimal current_balance "derived from PAYMENT_TRANSACTIONS"
+        datetime created_at
+    }
+
+    PURCHASE_ORDERS ||--o{ DELIVERIES : "fulfilled_by"
+    PURCHASE_ORDERS {
+        int id PK
+        int account_id FK
+        int fuel_type_id FK
+        decimal ordered_liters
+        decimal price_per_liter
+        decimal total_amount
+        string invoice_number
+        string status
+    }
+
+    DELIVERIES ||--o| STOCK_TRANSACTIONS : "posts"
+    DELIVERIES {
+        int id PK
+        int purchase_order_id FK
+        int tank_id FK
+        string vehicle_reg_number
+        string driver_name
+        decimal invoiced_liters
+        decimal deep_reading_before
+        decimal deep_reading_after
+        decimal actual_received_liters
+        decimal shortage_from_order
+        decimal shortage_from_delivery
+        datetime received_at
+    }
+
+    SHIFTS {
+        int id PK
+        int user_id FK
+        datetime start_at
+        datetime end_at
+    }
+
+    NOZZLES {
+        int id PK
+        int tank_id FK
+        string name
+    }
+
+    NOZZLES ||--o{ NOZZLE_READINGS : "records"
+    NOZZLE_READINGS ||--o| STOCK_TRANSACTIONS : "posts"
+    NOZZLE_READINGS ||--o| PAYMENT_TRANSACTIONS : "posts"
+    NOZZLE_READINGS {
+        int id PK
+        int nozzle_id FK
+        int shift_id FK
+        int user_id FK
+        decimal opening_reading
+        decimal closing_reading
+        decimal liters_sold
+        decimal price_per_liter
+        decimal amount
+        datetime recorded_at
+    }
+
+    STOCK_ADJUSTMENTS ||--o| STOCK_TRANSACTIONS : "posts"
+    STOCK_ADJUSTMENTS {
+        int id PK
+        int tank_id FK
+        int user_id FK
+        int deep_reading_id FK
+        decimal quantity_liters
+        string adjustment_type
+        string reason
+        datetime adjusted_at
+    }
+
+    STOCK_TRANSACTIONS {
+        int id PK
+        int tank_id FK
+        decimal quantity_liters
+        decimal balance_after
+        int delivery_id FK
+        int nozzle_reading_id FK
+        int stock_adjustment_id FK
+        int reversed_transaction_id FK
+        string remarks
+        datetime created_at
+    }
+
+    PAYMENT_TRANSACTIONS {
+        int id PK
+        int account_id FK
+        string type "income | expense"
+        string category
+        decimal amount
+        string payment_method
+        int nozzle_reading_id FK
+        int purchase_order_id FK
+        int reversed_transaction_id FK
+        string status
+        string remarks
+        datetime transacted_at
+    }
+```
+
+---
+
+## 4. Phased Execution Plan
+
+Once approved, execution will follow these steps:
+
+### Phase 1: Clean Slate & Initialization
+1. Delete all existing files in `/var/www/html/desktop_app`.
+2. Initialize Laravel 11 API using Composer.
+3. Install and configure NativePHP (Tauri adapter).
+4. Initialize Nuxt 3 frontend within a dedicated sub-directory or monorepo structure.
+
+### Phase 2: Database & Core Models
+1. Install `spatie/laravel-permission` and configure roles/permissions.
+2. Create migrations and Eloquent models for the entire ERD (Fuel ledger, Payment ledger, Inventory module).
+3. Implement strict database constraints (no negative stock, exactly one FK source for transactions).
+4. Write database seeders to provide initial test data (Roles, Tanks, Calibrations, Nozzles, Distributor).
+
+### Phase 3: Business Logic (Ledgers)
+1. Implement the Append-Only logic via Eloquent Observers or Service classes ensuring that `calculated_stock` and `current_balance` are dynamically derived.
+2. Implement Linear Interpolation logic for `TankCalibration` deep-to-liters calculation.
+
+### Phase 4: API & Frontend Integration
+1. Configure Laravel Sanctum for API authentication.
+2. Build controllers and API resources for Dashboard, Fuel Operations, Procurement, Inventory, and Accounting.
+3. Build the Nuxt UI with a dark sidebar/light content area, implementing data tables and KPI cards.
