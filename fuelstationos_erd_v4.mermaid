@@ -1,0 +1,281 @@
+erDiagram
+    USERS {
+        int id PK
+        string username UK
+        string name
+        string email
+        datetime email_verified_at
+        string password
+        remember_token
+        timestamps
+    }
+
+    ROLES {
+        int id PK
+        string name UK
+        string guard_name
+        timestamps
+    }
+
+    PERMISSIONS {
+        int id PK
+        string name UK
+        string guard_name
+        timestamps
+    }
+
+    MODEL_HAS_ROLES {
+        int role_id FK
+        string model_type
+        int model_id
+    }
+
+    MODEL_HAS_PERMISSIONS {
+        int permission_id FK
+        string model_type
+        int model_id
+    }
+
+    PRICE_HISTORY {
+        int id PK
+        string priceable_type "FuelType | Product"
+        int priceable_id "polymorphic, no DB-level FK constraint"
+        decimal old_price "previous price"
+        decimal new_price "new price"
+        int user_id FK "who changed the price"
+        string reason "optional - why price changed"
+        datetime changed_at
+        timestamps
+    }
+
+    FUEL_TYPES {
+        int id PK
+        string title
+        string slug UK
+        decimal current_price "10,4 current active price"
+        timestamps
+    }
+
+    TANKS {
+        int id PK
+        int fuel_type_id FK
+        string name
+        decimal capacity_liters
+        decimal calculated_stock "derived, not fillable"
+        timestamps
+    }
+
+    TANK_CALIBRATIONS {
+        int id PK
+        int tank_id FK
+        decimal deep_cm
+        decimal volume_liters
+        timestamps
+    }
+
+    DEEP_READINGS {
+        int id PK
+        int tank_id FK
+        int user_id FK
+        decimal deep_cm
+        decimal calibrated_volume_liters
+        decimal system_stock_at_reading
+        decimal variance_liters
+        datetime recorded_at
+        timestamps
+    }
+
+    NOZZLES {
+        int id PK
+        int tank_id FK
+        string name
+        timestamps
+    }
+
+    NOZZLE_READINGS {
+        int id PK
+        int nozzle_id FK
+        int user_id FK
+        decimal opening_reading
+        decimal closing_reading
+        decimal liters_sold
+        decimal price_per_liter
+        decimal amount
+        datetime recorded_at
+        timestamps
+    }
+
+    ACCOUNTS {
+        int id PK
+        int user_id FK "nullable - only for employee-type accounts"
+        string account_type "distributor | customer | employee | owner"
+        string name
+        string contact
+        decimal opening_balance
+        decimal current_balance "derived, not fillable"
+        timestamps
+    }
+
+    PURCHASE_ORDERS {
+        int id PK
+        int account_id FK
+        int fuel_type_id FK
+        decimal ordered_liters
+        decimal price_per_liter
+        decimal total_amount
+        string invoice_number
+        string status "pending | partially_received | received | cancelled"
+        timestamps
+    }
+
+    DELIVERIES {
+        int id PK
+        int purchase_order_id FK
+        int tank_id FK
+        string vehicle_reg_number
+        string driver_name
+        decimal invoiced_liters
+        decimal deep_reading_before
+        decimal deep_reading_after
+        decimal actual_received_liters
+        decimal shortage_from_order
+        decimal shortage_from_delivery
+        datetime received_at
+        timestamps
+    }
+
+    PRODUCTS {
+        int id PK
+        string title
+        string slug UK
+        string category "lubricant | accessory | snack | other"
+        string unit "ltr | pcs | box | kg | ml"
+        decimal unit_price "current active price"
+        decimal current_stock "persisted inventory level"
+        timestamps
+    }
+
+    SALES {
+        int id PK
+        int account_id FK "nullable - walk-in customer"
+        decimal total_amount "derived, sum of sale_items.amount"
+        datetime sold_at
+        timestamps
+    }
+
+    SALE_ITEMS {
+        int id PK
+        int sale_id FK
+        int product_id FK "nullable - for non-fuel items"
+        int nozzle_reading_id FK "nullable - for fuel items"
+        string unit "snapshot at time of sale"
+        decimal quantity
+        decimal unit_price "snapshot at time of sale"
+        decimal amount
+        timestamps
+        %% exactly one of product_id OR nozzle_reading_id must be set
+    }
+
+    STOCK_ADJUSTMENTS {
+        int id PK
+        string stockable_type "Tank | Product"
+        int stockable_id "polymorphic, no DB-level FK constraint"
+        int user_id FK "who requested/performed the adjustment"
+        int deep_reading_id FK "nullable - tank-only, not applicable to products"
+        decimal quantity "positive=in, negative=out"
+        string unit "nullable, unit of measurement (ltr, pcs, box, kg, ml)"
+        string adjustment_type "correction | spillage | evaporation | theft | return | other"
+        string reason
+        datetime adjusted_at
+        timestamps
+    }
+
+    STOCK_TRANSACTIONS {
+        int id PK
+        string stockable_type "Tank | Product"
+        int stockable_id "polymorphic, no DB-level FK constraint"
+        int user_id FK "who performed the transaction"
+        decimal quantity "positive=in, negative=out"
+        string unit "nullable, unit of measurement (ltr, pcs, box, kg, ml)"
+        decimal balance_after
+        int delivery_id FK "nullable - tank stock-in source"
+        int nozzle_reading_id FK "nullable - tank stock-out source"
+        int sale_item_id FK "nullable - product stock-out source"
+        int stock_adjustment_id FK "nullable - adjustment source, either stockable type"
+        int reversed_transaction_id FK "nullable - for reversals"
+        string remarks
+        timestamps
+        %% Row purpose is derived ENTIRELY from which single FK is set below —
+        %% no separate transaction_type column, to avoid two sources of truth:
+        %% Tank Delivery:    delivery_id set
+        %% Tank Sale:        nozzle_reading_id set
+        %% Product Sale:     sale_item_id set
+        %% Adjustment:       stock_adjustment_id set (either stockable type)
+        %% Reversal:         reversed_transaction_id set, all other source FKs null
+        %% Exactly ONE of the five source FKs above must be non-null per row.
+    }
+
+    PAYMENT_TRANSACTIONS {
+        int id PK
+        int account_id FK
+        string type "income | expense"
+        string category "fuel_purchase | fuel_sale | salary | utility | maintenance | other"
+        decimal amount
+        string payment_method "cash | bank_transfer | cheque | card"
+        int sale_id FK "nullable - revenue source"
+        int purchase_order_id FK "nullable - expense source"
+        int reversed_transaction_id FK "nullable - for reversals"
+        string status "pending | completed | failed | cancelled"
+        string remarks
+        datetime transacted_at
+        timestamps
+    }
+
+    %% ── Relationships ──────────────────────────────────────────────
+
+    USERS ||--o{ DEEP_READINGS : "records"
+    USERS ||--o{ NOZZLE_READINGS : "records"
+    USERS ||--o{ STOCK_TRANSACTIONS : "performs"
+    USERS ||--o{ STOCK_ADJUSTMENTS : "requests"
+    USERS ||--o| ACCOUNTS : "has_account"
+    USERS ||--o{ PRICE_HISTORY : "changes_prices"
+
+    ACCOUNTS ||--o{ SALES : "purchases"
+    ACCOUNTS ||--o{ PURCHASE_ORDERS : "places"
+    ACCOUNTS ||--o{ PAYMENT_TRANSACTIONS : "settles"
+
+    FUEL_TYPES ||--o{ TANKS : "stored_in"
+    FUEL_TYPES ||--o{ PURCHASE_ORDERS : "ordered"
+    FUEL_TYPES ||--o{ PRICE_HISTORY : "has_price_history"
+
+    TANKS ||--o{ TANK_CALIBRATIONS : "calibrated_by"
+    TANKS ||--o{ NOZZLES : "feeds"
+    TANKS ||--o{ DEEP_READINGS : "measured_by"
+    TANKS ||--o{ DELIVERIES : "receives"
+    TANKS ||--o{ STOCK_TRANSACTIONS : "stockable (polymorphic)"
+    TANKS ||--o{ STOCK_ADJUSTMENTS : "stockable (polymorphic)"
+
+    NOZZLES ||--o{ NOZZLE_READINGS : "records"
+
+    PURCHASE_ORDERS ||--o{ DELIVERIES : "fulfilled_by"
+
+    DELIVERIES ||--o| STOCK_TRANSACTIONS : "posts"
+
+    PRODUCTS ||--o{ SALE_ITEMS : "sold_as"
+    PRODUCTS ||--o{ PRICE_HISTORY : "has_price_history"
+    PRODUCTS ||--o{ STOCK_TRANSACTIONS : "stockable (polymorphic)"
+    PRODUCTS ||--o{ STOCK_ADJUSTMENTS : "stockable (polymorphic)"
+
+    SALES ||--o{ SALE_ITEMS : "contains"
+    SALES ||--o| PAYMENT_TRANSACTIONS : "posts"
+
+    SALE_ITEMS ||--o| PRODUCTS : "of_product"
+    SALE_ITEMS ||--o| NOZZLE_READINGS : "of_fuel_reading"
+    SALE_ITEMS ||--o| STOCK_TRANSACTIONS : "posts (product items only)"
+
+    STOCK_ADJUSTMENTS ||--o| STOCK_TRANSACTIONS : "posts"
+
+    STOCK_TRANSACTIONS ||--o{ STOCK_TRANSACTIONS : "reverses"
+
+    PRICE_HISTORY }o--|| FUEL_TYPES : "belongs_to_priceable (polymorphic)"
+    PRICE_HISTORY }o--|| PRODUCTS : "belongs_to_priceable (polymorphic)"
