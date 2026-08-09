@@ -235,26 +235,26 @@ prod: ## Start production environment
 		cp .env.example .env.production; \
 		echo "${RED}⚠️ Please update .env.production with production values!${RESET}"; \
 	fi
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+	docker compose -f docker-compose.prod.yml up -d
 	@echo "${GREEN}✅ Production environment ready!${RESET}"
 
 prod-build: ## Build production images
 	@echo "${GREEN}🏗️ Building production images...${RESET}"
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache
+	docker compose -f docker-compose.prod.yml build --no-cache
 
 prod-down: ## Stop production environment
 	@echo "${YELLOW}🛑 Stopping production...${RESET}"
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+	docker compose -f docker-compose.prod.yml down
 
 prod-logs: ## View production logs
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
+	docker compose -f docker-compose.prod.yml logs -f
 
 prod-status: ## Show production container status
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+	docker compose -f docker-compose.prod.yml ps
 
 prod-clean: ## Clean production environment
 	@echo "${YELLOW}🧹 Cleaning production...${RESET}"
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml down -v
+	docker compose -f docker-compose.prod.yml down -v
 	@echo "${GREEN}✅ Production clean complete!${RESET}"
 
 # Health Check

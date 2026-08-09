@@ -8,12 +8,13 @@ WORKDIR /app
 
 # Copy package files
 COPY frontend/package*.json ./
+COPY frontend/pnpm-lock.yaml ./
 
 # Install pnpm
 RUN npm install -g pnpm
 
-# Install dependencies
-RUN pnpm install
+# Install dependencies with frozen lockfile
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY frontend/ .
@@ -30,9 +31,9 @@ WORKDIR /app
 COPY --from=builder /app/.output /app/.output
 COPY --from=builder /app/package*.json ./
 
-# Install only production dependencies
+# Install only production dependencies with frozen lockfile
 RUN npm install -g pnpm && \
-    pnpm install --prod
+    pnpm install --prod --frozen-lockfile
 
 EXPOSE 3000
 

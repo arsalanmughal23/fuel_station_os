@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -24,7 +24,6 @@ return new class extends Migration
             $table->dateTime('adjusted_at');
             $table->timestamps();
 
-
             // Add check constraint for adjustment_type
             if (Schema::getConnection()->getDriverName() !== 'sqlite') {
                 $table->check("adjustment_type IN ('correction', 'spillage', 'evaporation', 'theft', 'return', 'other')", 'stock_adjustments_adjustment_type_check');
@@ -34,6 +33,9 @@ return new class extends Migration
             if (Schema::getConnection()->getDriverName() !== 'sqlite') {
                 $table->check("unit IN ('ltr', 'piece', 'box', 'kg', 'ml')", 'stock_adjustments_unit_check');
             }
+
+            // Add polymorphic index
+            $table->index(['stockable_type', 'stockable_id'], 'sa_stockable_idx');
         });
     }
 
@@ -43,9 +45,9 @@ return new class extends Migration
     public function down(): void
     {
         if (Schema::getConnection()->getDriverName() !== 'sqlite') {
-            DB::statement('DROP IF EXISTS stock_adjustments_adjustment_type_check');
+            DB::statement('DROP INDEX IF EXISTS sa_stockable_idx');
         }
-        
+
         Schema::dropIfExists('stock_adjustments');
     }
 };

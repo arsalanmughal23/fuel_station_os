@@ -23,7 +23,7 @@ return new class extends Migration
             $table->foreignId('purchase_order_id')->nullable()->constrained()->restrictOnDelete();
             $table->foreignId('reversed_transaction_id')->nullable()->constrained('payment_transactions')->restrictOnDelete();
             $table->string('status');
-            
+
             // Add check constraints for enum fields
             if (Schema::getConnection()->getDriverName() !== 'sqlite') {
                 // For MySQL, PostgreSQL, etc.
@@ -34,6 +34,7 @@ return new class extends Migration
             }
             $table->string('remarks')->nullable();
             $table->dateTime('transacted_at');
+            $table->timestamps();
 
             $table->index(['account_id', 'transacted_at']);
         });

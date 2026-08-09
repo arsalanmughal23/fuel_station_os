@@ -21,7 +21,7 @@ class SaleItem extends Model
     protected function casts(): array
     {
         return [
-            'unit' => 'string',
+            'unit' => ScaleUnit::class,
             'quantity' => 'decimal:3',
             'unit_price' => 'decimal:4',
             'amount' => 'decimal:2',

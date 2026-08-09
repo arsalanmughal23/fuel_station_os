@@ -14,12 +14,12 @@ return new class extends Migration
         Schema::create('sales', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->restrictOnDelete(); // cashier
-            $table->foreignId('customer_id')->nullable()->constrained()->nullOnDelete(); // optional customer
+            $table->foreignId('account_id')->nullable()->constrained()->nullOnDelete(); // optional customer
             $table->decimal('total_amount', 12, 2);
             $table->decimal('paid_amount', 12, 2)->default(0);
             $table->decimal('change_amount', 12, 2)->default(0);
             $table->string('payment_status')->default('pending');
-            
+
             // Add check constraint for payment_status
             if (Schema::getConnection()->getDriverName() !== 'sqlite') {
                 // For MySQL, PostgreSQL, etc.

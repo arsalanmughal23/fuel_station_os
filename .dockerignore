@@ -53,6 +53,7 @@ Thumbs.db
 .coverage
 .phpunit.result.cache
 phpunit.xml
+/tests/
 
 # Build
 public/hot
@@ -64,3 +65,10 @@ auth.json
 # Documentation
 *.md
 !README.md
+
+# Project-specific files to exclude
+combined_prompt.txt
+fuelstationos_erd_v4.mermaid
+implementation_plan*.md
+recommended-structure.txt
+*.mermaid

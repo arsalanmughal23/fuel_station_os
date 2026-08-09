@@ -12,7 +12,7 @@ class Sale extends Model
 {
     protected $fillable = [
         'user_id',
-        'customer_id',
+        'account_id',
         'total_amount',
         'paid_amount',
         'change_amount',
@@ -38,9 +38,9 @@ class Sale extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function customer(): BelongsTo
+    public function account(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'customer_id');
+        return $this->belongsTo(Account::class);
     }
 
     public function saleItems(): HasMany
@@ -55,8 +55,6 @@ class Sale extends Model
 
     /**
      * Calculate the total amount from sale items.
-     *
-     * @return float
      */
     public function calculateTotalAmount(): float
     {

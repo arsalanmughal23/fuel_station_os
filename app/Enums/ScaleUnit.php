@@ -4,7 +4,7 @@ namespace App\Enums;
 
 enum ScaleUnit: string
 {
-    case Litr = 'ltr';
+    case Liter = 'ltr';
     case Pcs = 'pcs';
     case Box = 'box';
     case Kg = 'kg';
@@ -12,8 +12,8 @@ enum ScaleUnit: string
 
     public function label(): string
     {
-        return match($this) {
-            self::Litr => 'Liter',
+        return match ($this) {
+            self::Liter => 'Liter',
             self::Pcs => 'Piece',
             self::Box => 'Box',
             self::Kg => 'Kg',

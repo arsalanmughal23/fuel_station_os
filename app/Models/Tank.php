@@ -24,7 +24,6 @@ class Tank extends Model
     {
         return [
             'capacity_liters' => 'decimal:3',
-            'calculated_stock' => 'decimal:3',
         ];
     }
 

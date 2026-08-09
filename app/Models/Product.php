@@ -6,10 +6,11 @@ use App\Enums\ScaleUnit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Support\Str;
 
 class Product extends Model
 {
+    use Concerns\HasSlug;
+
     /**
      * current_stock is a persisted field that tracks inventory levels.
      *
@@ -22,15 +23,6 @@ class Product extends Model
         'unit_price',
         'current_stock',
     ];
-
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($product) {
-            $product->slug = Str::slug($product->title);
-        });
-    }
 
     protected function casts(): array
     {
@@ -61,15 +53,5 @@ class Product extends Model
     public function priceHistory(): MorphMany
     {
         return $this->morphMany(PriceHistory::class, 'priceable');
-    }
-
-    /**
-     * Get the current stock level.
-     *
-     * @return float
-     */
-    public function getCurrentStockAttribute()
-    {
-        return $this->current_stock;
     }
 }

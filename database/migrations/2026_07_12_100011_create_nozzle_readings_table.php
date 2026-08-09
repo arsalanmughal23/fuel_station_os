@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('nozzle_readings', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('nozzle_id')->constrained()->onDelete('cascade');
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('nozzle_id')->constrained()->restrictOnDelete();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete();
             $table->decimal('opening_reading', 12, 3);
             $table->decimal('closing_reading', 12, 3);
             $table->decimal('liters_sold', 12, 3);

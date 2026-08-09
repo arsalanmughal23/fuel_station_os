@@ -5,8 +5,7 @@ services:
       dockerfile: docker/php/Dockerfile.prod
     container_name: laravel-backend-prod
     restart: always
-    ports:
-      - "9000:9000"
+    # No port exposure for PHP-FPM in production
     env_file:
       - .env.production
     volumes:
@@ -43,7 +42,15 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    command: php artisan queue:work --verbose --tries=3 --timeout=90 --sleep=3
+    command: >
+      sh -c "
+        echo 'Waiting for migrations...' &&
+        while ! php artisan migrate --force --no-interaction 2>/dev/null; do
+          sleep 2;
+        done &&
+        echo 'Starting queue worker...' &&
+        php artisan queue:work --verbose --tries=3 --timeout=90 --sleep=3
+      "
     env_file:
       - .env.production
     networks:

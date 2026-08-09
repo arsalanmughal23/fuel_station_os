@@ -30,8 +30,17 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
+# Copy composer files first for better layer caching
+# COPY composer.json composer.lock ./
+COPY composer.json ./
+
+# Install dependencies (will be cached if composer files don't change)
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+
 # Copy application files
 COPY . .
+
+RUN composer dump-autoload --optimize
 
 # === BUILD-TIME SETUP (runs once during image build) ===
 RUN mkdir -p bootstrap/cache \

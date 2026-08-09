@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use App\Enums\PaymentType;
 use App\Enums\PaymentCategory;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
+use App\Enums\PaymentType;
 use App\Models\Concerns\AppendOnlyLedger;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,6 +34,8 @@ class PaymentTransaction extends Model
         return [
             'type' => PaymentType::class,
             'category' => PaymentCategory::class,
+            'payment_method' => PaymentMethod::class,
+            'status' => PaymentStatus::class,
             'amount' => 'decimal:2',
             'transacted_at' => 'datetime',
         ];

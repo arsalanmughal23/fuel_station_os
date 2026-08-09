@@ -15,8 +15,6 @@ class StockTransaction extends Model
     public const UPDATED_AT = null;
 
     protected $fillable = [
-        'stockable_type',
-        'stockable_id',
         'unit',
         'quantity',
         'balance_after',

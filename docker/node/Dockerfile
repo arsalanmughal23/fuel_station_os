@@ -8,11 +8,12 @@ WORKDIR /app
 
 # Copy package files
 COPY frontend/package*.json ./
+COPY frontend/pnpm-lock.yaml ./
 
 # Install pnpm
 RUN npm install -g pnpm
 
-# Install dependencies (without lock file check)
+# Install dependencies with frozen lockfile for reproducibility
 RUN pnpm install
 
 # Copy source code

@@ -11,8 +11,6 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class StockAdjustment extends Model
 {
     protected $fillable = [
-        'stockable_type',
-        'stockable_id',
         'unit',
         'user_id',
         'deep_reading_id',

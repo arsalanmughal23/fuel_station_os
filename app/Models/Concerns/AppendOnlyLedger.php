@@ -2,7 +2,7 @@
 
 namespace App\Models\Concerns;
 
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 trait AppendOnlyLedger
 {
@@ -11,24 +11,13 @@ trait AppendOnlyLedger
      */
     protected static function bootAppendOnlyLedger(): void
     {
-        static::addGlobalScope('appendOnly', function (Builder $builder) {
-            $where = [];
-            foreach (static::getAppendOnlyColumns() as $column) {
-                $where[$column] = 0;
-            }
-
-            $builder->where($where);
+        static::updating(function (Model $model) {
+            throw new \RuntimeException(static::class.' is append-only and cannot be updated.');
         });
-    }
 
-    /**
-     * Get the columns that should be considered for append-only behavior.
-     *
-     * @return array
-     */
-    public static function getAppendOnlyColumns(): array
-    {
-        return ['updated_at'];
+        static::deleting(function (Model $model) {
+            throw new \RuntimeException(static::class.' is append-only and cannot be deleted.');
+        });
     }
 
     /**
@@ -36,14 +25,14 @@ trait AppendOnlyLedger
      */
     public function update(array $attributes = [], array $options = []): bool
     {
-        throw new \RuntimeException(static::class . ' is append-only and cannot be updated.');
+        throw new \RuntimeException(static::class.' is append-only and cannot be updated.');
     }
 
     /**
      * Prevent deletes on the model.
      */
-    public function delete(): bool|null
+    public function delete(): ?bool
     {
-        throw new \RuntimeException(static::class . ' is append-only and cannot be deleted.');
+        throw new \RuntimeException(static::class.' is append-only and cannot be deleted.');
     }
 }

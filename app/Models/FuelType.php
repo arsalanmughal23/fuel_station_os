@@ -5,24 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Support\Str;
 
 class FuelType extends Model
 {
+    use Concerns\HasSlug;
+
     protected $fillable = [
         'title',
-        'slug',
         'current_price',
     ];
-
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($fuelType) {
-            $fuelType->slug = Str::slug($fuelType->title);
-        });
-    }
 
     protected function casts(): array
     {
