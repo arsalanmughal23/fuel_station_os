@@ -13,7 +13,7 @@ COPY frontend/pnpm-lock.yaml ./
 # Install pnpm
 RUN npm install -g pnpm
 
-# Install dependencies with frozen lockfile for reproducibility
+# Install dependencies (allow updating lockfile for development)
 RUN pnpm install
 
 # Copy source code

@@ -3,12 +3,207 @@
 **Reviewer:** Antigravity (AI Code Review)
 **Date:** August 2026
 **Codebase:** Laravel 12 + Nuxt 3 + SQLite + Docker
+**Progress audit:** August 10, 2026 — statuses below reflect actual codebase state
+
+---
+
+## 0. Progress Tracker
+
+> **For AI agents:** Read this section first, then `sub_plan.md` and `implementation_plan.md`. Continue from the first ⏳ or 🔄 item in **Recommended next steps**.
+
+### Status legend
+
+| Symbol | Meaning |
+|--------|---------|
+| ✅ | **Done** — implemented and verified in codebase |
+| 🔄 | **Partial** — scaffolded or started but incomplete |
+| 🚧 | **In progress** — actively being worked on |
+| ⏳ | **Pending** — not started |
+| ❌ | **Blocked** — cannot proceed until a dependency is done |
+
+### Overall completion (August 10, 2026)
+
+| Area | Was (review) | Now | Notes |
+|------|--------------|-----|-------|
+| Critical bug fixes (P0) | 0/5 | **4/5 ✅ + 1 🔄** | Auth integration still incomplete |
+| Backend scaffolding | ~10% | **~55%** | Controllers, requests, services exist as stubs |
+| Service business logic | 0% | **~5%** | All services are thin `create()` wrappers |
+| API wiring | 0% | **🔄 Broken** | `routes/api.php` exists but is **not registered** in `bootstrap/app.php`; `AuthController` missing |
+| Auth & RBAC | 0% | **🔄 ~20%** | Packages + migrations installed; no traits, seeder, or controller |
+| Frontend | ~1% | **~1%** | Still a single test page |
+| Tests | 0% | **0%** | Only Laravel example stubs |
+| Docker / prod | ~60% | **~75%** | Prod multi-stage done; dev Dockerfile still basic |
+| Tauri desktop | 0% | **0%** | Not started |
+
+### Master task list
+
+#### P0 — Critical fixes (Section 4)
+
+| ID | Task | Status | Notes / files |
+|----|------|--------|---------------|
+| 4.1 | Fix `AppendOnlyLedger` broken global scope | ✅ | Uses model events in `app/Models/Concerns/AppendOnlyLedger.php` |
+| 4.2 | Register morph maps in `AppServiceProvider` | ✅ | `Tank`, `Product`, `FuelType` in `app/Providers/AppServiceProvider.php` |
+| 4.3 | Fix `Sale` model wrong FK / relationship | ✅ | Uses `account_id` + `account()` in `app/Models/Sale.php`; migration has FK |
+| 4.4 | Add missing enum casts on `PaymentTransaction` | ✅ | `payment_method`, `status` cast in `app/Models/PaymentTransaction.php` |
+| 4.5 | Install Sanctum + Spatie Permission | 🔄 | In `composer.json`; migrations published; **User model missing `HasApiTokens` + `HasRoles`** |
+| 4.5a | Create `AuthController` (login/logout) | ⏳ | Referenced in `routes/api.php` but file **does not exist** |
+| 4.5b | Register API routes in `bootstrap/app.php` | ⏳ | `routes/api.php` never loaded — **API endpoints unreachable** |
+| 4.5c | Publish/configure Sanctum middleware | 🔄 | `config/sanctum.php` exists; User traits + controller missing |
+
+#### P1 — High priority fixes
+
+| ID | Task | Status | Notes / files |
+|----|------|--------|---------------|
+| 4.6 | Resolve `calculated_stock` ambiguity | 🔄 | Column kept; updated via `StockTransaction::booted()` on create (not SQLite trigger); accessor fallback in `Tank.php` |
+| 4.6a | Resolve `accounts.current_balance` sync | ✅ | Updated via `PaymentTransaction::booted()` + accessor fallback in `Account.php` |
+| 4.6b | Resolve `products.current_stock` sync | ✅ | Updated via `StockTransaction::booted()` + accessor fallback in `Product.php` |
+| 4.7 | Fix `nozzle_readings` cascade inconsistency | ✅ | Uses `restrictOnDelete()` in migration |
+
+#### Backend scaffolding
+
+| ID | Task | Status | Notes / files |
+|----|------|--------|---------------|
+| 5.1 | Service layer (13 planned services) | 🔄 | 15 files in `app/Services/` — all stubs (`create()` only); extras: `TankService`, `NozzleService` |
+| 5.2 | API controllers | 🔄 | 13 entity controllers exist; **`AuthController` missing**; return raw models (no Resources) |
+| 5.3 | Form Requests — Store | 🔄 | 12 Store requests exist with basic rules |
+| 5.4 | Form Requests — Update | 🔄 | 5 Update requests (`FuelType`, `Tank`, `Nozzle`, `Product`, `Account`); missing for `Sale`, `PurchaseOrder` |
+| 5.5 | Form Requests — Auth | ⏳ | No `LoginRequest` |
+| 5.6 | API Resources | ⏳ | `app/Http/Resources/` directory empty |
+| 5.7 | Model Policies | ⏳ | No files in `app/Policies/` |
+| 5.8 | RoleSeeder + DatabaseSeeder | ⏳ | Only test user in `database/seeders/DatabaseSeeder.php` |
+| 5.9 | Events & Listeners | ⏳ | Not created |
+| 5.10 | XOR DB constraints | ✅ | SQLite triggers in `sale_items` and `stock_transactions` migrations |
+| 5.11 | Polymorphic indexes | ✅ | `st_stockable_idx`, `sa_stockable_idx`, `ph_priceable_idx` |
+| 5.12 | Morph type short keys migration | ✅ | `2026_08_10_000000_convert_morph_types_to_short_keys.php` |
+| 5.13 | `price_history` table | ✅ | `2026_08_09_000000_create_price_history_table.php` |
+| 5.14 | `HasSlug` trait | ✅ | `app/Models/Concerns/HasSlug.php`; used by `FuelType`, `Product` |
+| 5.15 | `UserFactory` username | ✅ | `database/factories/UserFactory.php` |
+
+#### Service business logic (implement in this order)
+
+| # | Service | Status | What's missing |
+|---|---------|--------|----------------|
+| 1 | `StockTransactionService` | 🔄 | Needs `append()`, `reverse()`, balance locking — currently just `create()` |
+| 2 | `PaymentTransactionService` | 🔄 | Needs `append()`, `reverse()` — currently just `create()` |
+| 3 | `FuelTypeService` | 🔄 | Needs price update + `PriceHistory` dual-write |
+| 4 | `TankCalibrationService` | 🔄 | Needs linear interpolation for dip chart |
+| 5 | `AccountService` | 🔄 | Stub only |
+| 6 | `ProductService` | 🔄 | Stub only |
+| 7 | `DeliveryService` | 🔄 | Should write stock ledger entry on delivery |
+| 8 | `NozzleReadingService` | 🔄 | Should write stock + payment ledger entries |
+| 9 | `SaleService` | 🔄 | Should orchestrate sale items, stock, payments |
+| 10 | `StockAdjustmentService` | 🔄 | Should write stock ledger entry |
+| 11 | `DeepReadingService` | 🔄 | Stub only |
+| 12 | `PurchaseOrderService` | 🔄 | Stub only |
+| 13 | `ReportService` | 🔄 | Returns empty array |
+| — | `TankService`, `NozzleService` | 🔄 | Extra stubs (not in original plan) |
+
+#### Model / migration fixes (Section 7)
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| 7.1 | `Sale.php` wrong customer FK | ✅ | Fixed — see 4.3 |
+| 7.2 | `AppendOnlyLedger` broken scope | ✅ | Fixed — see 4.1 |
+| 7.3 | `Tank` N+1 on `calculated_stock` | 🔄 | Persisted column + event sync; list queries may still N+1 without eager loading |
+| 7.4 | `StockTransaction` `stockable_type/id` in `$fillable` | ⏳ | Still mass-assignable — security/mass-assignment risk |
+| 7.5 | `FuelType` `slug` in `$fillable` | ✅ | Slug auto-generated via `HasSlug`; not in fillable |
+| 7.6 | `Product` no-op `getCurrentStockAttribute` | ✅ | Now falls back to `sum()` when null |
+| 7.7 | `Product`/`FuelType` use `boot()` not `booted()` | ✅ | Replaced with `HasSlug` trait |
+| 7.8 | `Account` `UPDATED_AT = null` + timestamps column | ⏳ | Still present; low priority |
+| 7.9 | `NozzleReading` missing `hasMany(StockTransaction)` | ⏳ | Has `hasOne` only; may need `hasMany` for reversals |
+| 7.10 | `stock_adjustments` migration invalid `down()` SQL | ✅ | Fixed to `DROP INDEX IF EXISTS` |
+| 7.11 | `payment_transactions` no `timestamps()` | ⏳ | By design for append-only; has `transacted_at` |
+| 7.12 | Migration gap (skipped `100006`) | ⏳ | Cosmetic numbering only |
+| 7.13 | `SaleItem` `unit` cast to `ScaleUnit` | ✅ | Fixed in `app/Models/SaleItem.php` |
+| 7.14 | `ScaleUnit::Litr` typo | ✅ | Renamed to `Liter` |
+
+#### Docker & infrastructure (Section 6)
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| 6.1 | Dev/prod PHP Dockerfiles differentiated | 🔄 | `Dockerfile.prod` is multi-stage + OPcache; dev `Dockerfile` still has git/curl |
+| 6.2 | Composer layer caching | 🔄 | Prod copies `composer.json` + lock first; dev copies only `composer.json` (no lock) |
+| 6.3 | `pnpm install --frozen-lockfile` | ✅ | In `docker/node/Dockerfile` |
+| 6.4 | PHP-FPM port 9000 NOT exposed to host | ✅ | Removed from `docker-compose.yml` |
+| 6.5 | Prod compose standalone (not dev overlay) | ✅ | `make prod` uses `docker-compose.prod.yml` only |
+| 6.6 | Volume conflict (bind vs named storage) | 🔄 | Dev uses `./storage` bind mount; simplified but vendor bind still redundant |
+| 6.7 | Queue worker waits for migrations | 🔄 | Queue command polls `migrate`; entrypoint does not run migrations |
+| 6.8 | `.dockerignore` exclusions | ✅ | Includes md, mermaid, tests |
+| 6.9 | Nginx SSL/TLS + rate limiting | ⏳ | Not configured |
+| 6.10 | `NUXT_PUBLIC_API_BASE_URL` env duplication | ⏳ | Still set in compose `environment` (overrides `env_file`) |
+| 6.11 | Nginx `server_name localhost` | ⏳ | Won't work with custom domains |
+| 6.12 | `composer.json` boilerplate metadata | ✅ | Updated to `fuel-station-os/fuel-station-os` |
+
+#### Security (Section 10)
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Authentication | 🔄 | Packages installed; controller, traits, route registration missing |
+| Authorization (RBAC) | ⏳ | Spatie installed; no policies, seeder, or role checks |
+| Input validation | 🔄 | Form requests exist but incomplete; auth routes unprotected |
+| Mass assignment | 🔄 | `stockable_type/id` still fillable on `StockTransaction` |
+| SQL injection | ✅ | Eloquent ORM |
+| CSRF / API tokens | 🔄 | Designed for token auth; not wired end-to-end |
+| Docker attack surface | 🔄 | Prod image improved; dev still has git/curl |
+| Env / secrets | ⏳ | `APP_KEY` guidance in `.env.example` only |
+
+#### Frontend (Section 8)
+
+| ID | Task | Status |
+|----|------|--------|
+| 8.1 | Pinia + `@vueuse/nuxt` dependencies | ⏳ |
+| 8.2 | `useApi` composable + auth store | ⏳ |
+| 8.3 | Entity stores (tanks, products, sales, accounts) | ⏳ |
+| 8.4 | Auth flow (login page, token storage) | ⏳ |
+| 8.5 | CRUD pages / components | ⏳ |
+| 8.6 | API connectivity test page | ✅ | `frontend/pages/index.vue` |
+
+#### Testing & CI
+
+| ID | Task | Status |
+|----|------|--------|
+| T.1 | Feature tests for API endpoints | ⏳ |
+| T.2 | Unit tests for services | ⏳ |
+| T.3 | Constraint tests (append-only, XOR, balances) | ⏳ |
+| T.4 | CI pipeline (GitHub Actions) | ⏳ |
+
+#### Tauri desktop
+
+| ID | Task | Status |
+|----|------|--------|
+| D.1 | `frontend/src-tauri/` scaffold | ⏳ |
+| D.2 | `build-desktop.sh` | ⏳ |
+| D.3 | IPC strategy + auto-updater | ⏳ |
+
+#### DRY / refactor (Section 9 — lower priority)
+
+| ID | Task | Status |
+|----|------|--------|
+| 9.1 | Extract SQLite trigger blocks to helper | ⏳ |
+| 9.2 | Extract DB driver check helper | ⏳ |
+| 9.3 | Centralize stock sign convention in service | ⏳ |
+| 9.4 | Service interfaces + DI bindings | ⏳ |
+
+### Recommended next steps (priority order)
+
+1. ⏳ **Register API routes** — add `api: __DIR__.'/../routes/api.php'` to `bootstrap/app.php`
+2. ⏳ **Create `AuthController`** + add `HasApiTokens` / `HasRoles` to `User` model
+3. ⏳ **Create `RoleSeeder`** + update `DatabaseSeeder` with roles and sample domain data
+4. 🔄 **Implement core ledger services** — `StockTransactionService::append/reverse`, `PaymentTransactionService::append/reverse`
+5. 🔄 **Implement domain services** — `DeliveryService`, `NozzleReadingService`, `SaleService` (orchestration)
+6. ⏳ **Generate API Resources** for all entities
+7. ⏳ **Create Policies** + wire authorization in Form Requests
+8. ⏳ **Write feature tests** for auth + ledger correctness
+9. ⏳ **Frontend** — Pinia auth store, `useApi`, login page
+10. ⏳ **Tauri** — desktop wrapper (after API is stable)
 
 ---
 
 ## 1. Executive Summary
 
-Fuel Station OS is a well-conceived, purpose-built desktop fuel management system with a commendably thoughtful architectural foundation. The data model and append-only ledger design demonstrate genuine domain expertise — the ERD is logical, the polymorphic relationships are well-placed, and the decision to use SQLite for a single-station desktop app is pragmatic and appropriate. However, the project is currently **at scaffolding stage (~25% complete)**. The backend has no Service layer, no API controllers, no authentication, no Form Requests, no Resources, and zero application tests. The frontend is essentially a blank page with a single test button. The Docker setup is functional but has reproducibility and security gaps. Before any production deployment, significant implementation work is needed across every layer, plus immediate fixes to several critical issues identified below.
+Fuel Station OS is a well-conceived, purpose-built desktop fuel management system with a commendably thoughtful architectural foundation. The data model and append-only ledger design demonstrate genuine domain expertise — the ERD is logical, the polymorphic relationships are well-placed, and the decision to use SQLite for a single-station desktop app is pragmatic and appropriate.
+
+**Current state (August 10, 2026):** Significant scaffolding progress since the original review (~25% → **~45% overall**). Critical model bugs (AppendOnlyLedger, Sale FK, morph maps, enum casts, cascade rules, XOR triggers) are **fixed**. Backend structure exists: 15 service stubs, 13 API controllers, 17 form requests, and protected route definitions in `routes/api.php`. However, **API routes are not registered in `bootstrap/app.php`**, **`AuthController` is missing**, services contain **no real business logic**, and there are **zero application tests**. The frontend remains a single test page. See **Section 0** for the full task-by-task status.
 
 ---
 
@@ -30,39 +225,39 @@ Fuel Station OS is a well-conceived, purpose-built desktop fuel management syste
 ## 3. Weaknesses
 
 ### Critical
-- **No authentication implemented** — `routes/api.php` has no Sanctum middleware. The API is completely open.
-- **No Service layer** — All 13 services described in the plan are absent. Business logic has nowhere to live.
-- **No API controllers** — Only `Controller.php` (empty base class) exists. Every API endpoint is unimplemented.
-- **No Form Request validation** — No `app/Http/Requests/` directory exists.
-- **No API Resources** — No `app/Http/Resources/` directory exists.
-- **Zero application tests** — Both `tests/Feature/ExampleTest.php` and `tests/Unit/ExampleTest.php` are Laravel scaffolding stubs.
-- **Morph map NOT registered** — `AppServiceProvider::boot()` is empty. The plan identifies the need to register morph maps but it was never done. Without this, morph queries store full class names (e.g. `App\Models\Tank`) in the DB — breaking on any namespace refactor.
+- ✅ **~~No authentication implemented~~** → **🔄 Partial** — Sanctum routes defined in `routes/api.php`, but `AuthController` missing, `User` lacks `HasApiTokens`, and **`bootstrap/app.php` does not load `routes/api.php`**
+- ✅ **~~No Service layer~~** → **🔄 Partial** — 15 service files exist in `app/Services/` but all are stubs (`create()` only)
+- ✅ **~~No API controllers~~** → **🔄 Partial** — 13 entity controllers exist; `AuthController` missing
+- ✅ **~~No Form Request validation~~** → **🔄 Partial** — 17 request files exist; missing auth + some Update requests
+- ⏳ **No API Resources** — `app/Http/Resources/` directory does not exist
+- ⏳ **Zero application tests** — Only Laravel scaffolding stubs remain
+- ✅ **~~Morph map NOT registered~~** — **Done** in `AppServiceProvider::boot()`
 
 ### High
-- **`AppendOnlyLedger` trait is fundamentally broken** — The `bootAppendOnlyLedger` global scope filters all queries to rows `WHERE updated_at = 0`, which is always false. `StockTransaction` sets `UPDATED_AT = null` so the column doesn't exist. This scope will corrupt reads, silently returning empty sets.
-- **`tanks.calculated_stock` is persisted but never updated** — The migration persists a `calculated_stock` column at `default(0)`, but no trigger or service updates it. The `getCalculatedStockAttribute()` accessor recalculates via `sum()` (correct), but the stored column is permanently stale data.
-- **`Sale.customer()` uses wrong FK and wrong model** — `Sale::customer()` calls `belongsTo(User::class, 'customer_id')`. The ERD shows `account_id` FK on `sales` pointing to `accounts`, not `users`. The `$fillable` also lists `customer_id` which doesn't exist in the migration.
-- **`accounts.current_balance` is stored but never updated** — Same anti-pattern: persisted field with no mechanism to stay in sync with `payment_transactions`.
-- **Inconsistent cascade rules** — `nozzle_readings` uses `onDelete('cascade')` while all other FK children use `restrictOnDelete()`. Deleting a nozzle will silently wipe all its readings.
-- **`PaymentTransaction` missing enum casts** — `payment_method` and `status` are not cast to their enum types (`PaymentMethod`, `PaymentStatus`), so they return raw strings.
-- **No Sanctum, no RBAC packages installed** — `composer.json` only has `laravel/framework` + `laravel/tinker`. Neither `laravel/sanctum` nor `spatie/laravel-permission` are installed.
-- **Frontend is a placeholder** — One page, zero components, zero composables, zero Pinia stores, no auth flow, no routing structure.
+- ✅ **~~`AppendOnlyLedger` trait is fundamentally broken~~** — **Done** — uses model events, not global scope
+- 🔄 **`tanks.calculated_stock` is persisted but never updated** → **Partial** — updated via `StockTransaction::booted()` on create; accessor fallback exists; no SQLite trigger
+- ✅ **~~`Sale.customer()` uses wrong FK and wrong model~~** — **Done** — uses `account_id` + `account()`
+- ✅ **~~`accounts.current_balance` is stored but never updated~~** — **Done** — updated via `PaymentTransaction::booted()` + accessor
+- ✅ **~~Inconsistent cascade rules~~** — **Done** — `nozzle_readings` uses `restrictOnDelete()`
+- ✅ **~~`PaymentTransaction` missing enum casts~~** — **Done**
+- 🔄 **~~No Sanctum, no RBAC packages installed~~** → **Partial** — packages in `composer.json`; User traits + seeder not wired
+- ⏳ **Frontend is a placeholder** — One page, zero components/stores/auth
 
 ### Medium
-- **Dev and Prod PHP Dockerfiles are identical** — `Dockerfile` and `Dockerfile.prod` are byte-for-byte identical. No multi-stage build, no OPcache, `git` and `curl` are in the prod image.
-- **Composer layer caching broken** — Both Dockerfiles do `COPY . .` *before* `composer install`, invalidating the dep layer on every source file change.
-- **`FuelType.current_price` denormalization** — Storing current price on `FuelType` alongside `PriceHistory` requires careful dual-write coordination. No service enforces this.
-- **`Product.boot()` not `booted()`** — Laravel convention since v8 is `booted()` for model lifecycle hooks. Same issue in `FuelType`.
-- **`StockTransaction::UPDATED_AT = null` + `timestamps()`** — Suppresses the column update but `timestamps()` still creates the `updated_at` column physically.
-- **No Tauri files exist** — `frontend/src-tauri/` does not exist. No `tauri.conf.json`, no `main.rs`, no `Cargo.toml`.
-- **SQL syntax error in migration `down()`** — `stock_adjustments` down: `DB::statement('DROP IF EXISTS stock_adjustments_adjustment_type_check')` is not valid SQL.
+- 🔄 **Dev and Prod PHP Dockerfiles are identical** → **Partial** — `Dockerfile.prod` is multi-stage with OPcache; dev `Dockerfile` unchanged
+- 🔄 **Composer layer caching broken** → **Partial** — fixed in prod; dev still copies only `composer.json` without lock
+- ⏳ **`FuelType.current_price` denormalization** — `FuelTypeService` is stub; no `PriceHistory` dual-write
+- ✅ **~~`Product.boot()` not `booted()`~~** — **Done** — replaced with `HasSlug` trait
+- ⏳ **`StockTransaction::UPDATED_AT = null` + `timestamps()`** — still present
+- ⏳ **No Tauri files exist** — not started
+- ✅ **~~SQL syntax error in migration `down()`~~** — **Done** — fixed in `stock_adjustments` migration
 
 ### Low
-- **`composer.json` has default Laravel boilerplate** — `name: "laravel/laravel"`, `description: "The skeleton application..."` should be updated.
-- **`ScaleUnit::Litr`** — Typo; should be `Liter` or `Litre`.
-- **`SaleItem` casts `unit` as `'string'`** — Should cast to `ScaleUnit::class`.
-- **`NUXT_PUBLIC_API_BASE_URL` set in both `env_file` and `environment`** in compose — The `environment` key silently overrides `env_file`, causing confusion.
-- **Nginx `server_name localhost`** — Will not work with custom domain names in production.
+- ✅ **~~`composer.json` has default Laravel boilerplate~~** — **Done**
+- ✅ **~~`ScaleUnit::Litr` typo~~** — **Done** — renamed to `Liter`
+- ✅ **~~`SaleItem` casts `unit` as `'string'`~~** — **Done** — casts to `ScaleUnit::class`
+- ⏳ **`NUXT_PUBLIC_API_BASE_URL` set in both `env_file` and `environment`** — still in compose
+- ⏳ **Nginx `server_name localhost`** — unchanged
 
 ---
 
@@ -70,9 +265,9 @@ Fuel Station OS is a well-conceived, purpose-built desktop fuel management syste
 
 ### P0 — Blockers
 
-#### 4.1 Fix the `AppendOnlyLedger` trait's broken global scope
+#### 4.1 Fix the `AppendOnlyLedger` trait's broken global scope — ✅ **DONE**
 
-The `bootAppendOnlyLedger` adds a global scope `WHERE updated_at = 0` — this will always return zero rows on ledger tables and is logically wrong. The trait's sole job is to block writes, not filter reads.
+> Fixed. Trait now uses model events (`updating`, `deleting`) instead of a broken global scope. See `app/Models/Concerns/AppendOnlyLedger.php`.
 
 **Current (broken):**
 ```php
@@ -119,9 +314,9 @@ trait AppendOnlyLedger
 }
 ```
 
-#### 4.2 Register Morph Maps in `AppServiceProvider`
+#### 4.2 Register Morph Maps in `AppServiceProvider` — ✅ **DONE**
 
-Without this, morph types are stored as `App\Models\Tank` in the DB — any namespace refactor silently breaks all polymorphic queries.
+> Fixed. Morph map registered for `Tank`, `Product`, `FuelType`. Migration `2026_08_10_000000_convert_morph_types_to_short_keys.php` converts existing FQCN values.
 
 ```php
 // app/Providers/AppServiceProvider.php
@@ -138,7 +333,9 @@ public function boot(): void
 }
 ```
 
-#### 4.3 Fix `Sale` model — wrong FK, wrong related model
+#### 4.3 Fix `Sale` model — wrong FK, wrong related model — ✅ **DONE**
+
+> Fixed. Model uses `account_id`, `account()` relationship, correct `$fillable`. Migration includes nullable `account_id` FK.
 
 ```php
 // WRONG — customer_id FK does not exist in the migration
@@ -159,7 +356,9 @@ public function account(): BelongsTo
 
 Also add `account_id` FK to the `sales` migration (nullable → `accounts`).
 
-#### 4.4 Fix missing enum casts in `PaymentTransaction`
+#### 4.4 Fix missing enum casts in `PaymentTransaction` — ✅ **DONE**
+
+> Fixed. `payment_method` and `status` cast to enum types.
 
 ```php
 // Add the missing casts:
@@ -176,7 +375,9 @@ protected function casts(): array
 }
 ```
 
-#### 4.5 Install required packages
+#### 4.5 Install required packages — 🔄 **PARTIAL**
+
+> Packages installed and migrations published. **Still pending:** `HasApiTokens` + `HasRoles` on `User`, `AuthController`, `RoleSeeder`, register `routes/api.php` in `bootstrap/app.php`.
 
 ```bash
 composer require laravel/sanctum spatie/laravel-permission
@@ -187,7 +388,9 @@ php artisan migrate
 
 ### P1 — High Priority
 
-#### 4.6 Resolve `calculated_stock` ambiguity (choose one approach)
+#### 4.6 Resolve `calculated_stock` ambiguity (choose one approach) — 🔄 **PARTIAL**
+
+> Option B partially implemented: `StockTransaction::booted()` updates `tanks.calculated_stock` and `products.current_stock` on ledger insert. No SQLite trigger. Accessor fallback when column is null.
 
 **Option A — Pure computed (always accurate):** Remove the `calculated_stock` column from the migration. The accessor already does `sum()`.
 
@@ -206,7 +409,9 @@ BEGIN
 END;
 ```
 
-#### 4.7 Fix inconsistent cascade in `nozzle_readings`
+#### 4.7 Fix inconsistent cascade in `nozzle_readings` — ✅ **DONE**
+
+> Fixed. Both FKs use `restrictOnDelete()`.
 
 ```php
 // Current — dangerous: deletes all readings when nozzle deleted
@@ -233,7 +438,7 @@ The monorepo structure is practical for a small team:
 /makefile          # Unified DX commands
 ```
 
-**Missing:** No `docker/tauri/` directory and no `build-desktop.sh`. The Tauri desktop wrapper is entirely unimplemented.
+**Missing:** No `docker/tauri/` directory and no `build-desktop.sh`. The Tauri desktop wrapper is entirely unimplemented. ⏳ **PENDING**
 
 ### 5.2 Domain Model Coherence
 
@@ -250,25 +455,11 @@ Product → SaleItem → Sale → Account
 
 This is well-reasoned. The single `stock_transactions` table for both fuel tanks and shop products via `stockable` morph is the right design.
 
-**Missing DB enforcement — XOR constraints:**
+**Missing DB enforcement — XOR constraints:** ✅ **DONE** — SQLite triggers added in `sale_items` and `stock_transactions` migrations.
 
-The plan states `SALE_ITEMS: exactly ONE of (product_id, nozzle_reading_id) must be set`. This is not enforced at any level. Add SQLite triggers:
+### 5.3 Service Layer — 🔄 **PARTIAL (stubs only)**
 
-```sql
-CREATE TRIGGER sale_items_xor_check
-BEFORE INSERT ON sale_items
-BEGIN
-    SELECT CASE
-        WHEN (NEW.product_id IS NULL AND NEW.nozzle_reading_id IS NULL)
-          OR (NEW.product_id IS NOT NULL AND NEW.nozzle_reading_id IS NOT NULL)
-        THEN RAISE(ABORT, 'sale_items must have exactly one of product_id or nozzle_reading_id')
-    END;
-END;
-```
-
-### 5.3 Service Layer — Absent
-
-The plan lists 13 services; none exist. This is the highest-priority implementation work.
+The plan lists 13 services; **15 stub files now exist** in `app/Services/` but none contain real business logic (all are thin `create()` wrappers). This remains the highest-priority implementation work.
 
 **Recommended directory structure:**
 ```
@@ -413,34 +604,35 @@ tests/
 
 ### 7.1 Models — Issues Summary
 
-| File | Issue | Severity |
-|------|-------|----------|
-| `Sale.php` | `customer_id` in `$fillable` and wrong relationship | Critical |
-| `AppendOnlyLedger.php` | Global scope corrupts reads | Critical |
-| `Tank.php` | `calculated_stock` accessor causes N+1 when listing | High |
-| `StockTransaction.php` | `stockable_type`/`stockable_id` should not be in `$fillable` | Medium |
-| `FuelType.php` | `slug` is auto-generated but in `$fillable` | Medium |
-| `Product.php` | `getCurrentStockAttribute()` is a no-op getter | Low |
-| `Product.php` | Uses `boot()` instead of `booted()` | Low |
-| `Account.php` | `UPDATED_AT = null` but `timestamps()` creates the column | Low |
-| `NozzleReading.php` | Missing `hasMany(StockTransaction)` relationship | Medium |
+| File | Issue | Severity | Status |
+|------|-------|----------|--------|
+| `Sale.php` | `customer_id` in `$fillable` and wrong relationship | Critical | ✅ Fixed |
+| `AppendOnlyLedger.php` | Global scope corrupts reads | Critical | ✅ Fixed |
+| `Tank.php` | `calculated_stock` accessor causes N+1 when listing | High | 🔄 Partial (event sync + accessor) |
+| `StockTransaction.php` | `stockable_type`/`stockable_id` should not be in `$fillable` | Medium | ⏳ Pending |
+| `FuelType.php` | `slug` is auto-generated but in `$fillable` | Medium | ✅ Fixed (HasSlug) |
+| `Product.php` | `getCurrentStockAttribute()` is a no-op getter | Low | ✅ Fixed |
+| `Product.php` | Uses `boot()` instead of `booted()` | Low | ✅ Fixed (HasSlug) |
+| `Account.php` | `UPDATED_AT = null` but `timestamps()` creates the column | Low | ⏳ Pending |
+| `NozzleReading.php` | Missing `hasMany(StockTransaction)` relationship | Medium | ⏳ Pending |
 
 ### 7.2 Migrations — Issues Summary
 
-- **Missing polymorphic index** on `stock_transactions` — critical for morph query performance:
-  ```php
-  $table->index(['stockable_type', 'stockable_id', 'created_at'], 'st_stockable_idx');
-  ```
-- **Missing polymorphic index** on `stock_adjustments`:
-  ```php
-  $table->index(['stockable_type', 'stockable_id'], 'sa_stockable_idx');
-  ```
-- `payment_transactions` — no `timestamps()` call. No `created_at`/`updated_at` columns.
-- `nozzle_readings` — uses `onDelete('cascade')` inconsistently (see §4.7).
-- `stock_adjustments` `down()` method has invalid SQL (`DROP IF EXISTS constraint_name` is not valid syntax).
-- Migration gap: `100006` is skipped (accounts is `100005`, nozzles is `100007`).
+| Issue | Status |
+|-------|--------|
+| Missing polymorphic index on `stock_transactions` | ✅ Done (`st_stockable_idx`) |
+| Missing polymorphic index on `stock_adjustments` | ✅ Done (`sa_stockable_idx`) |
+| `payment_transactions` — no `timestamps()` call | ⏳ Pending (by design) |
+| `nozzle_readings` — uses `onDelete('cascade')` inconsistently | ✅ Fixed |
+| `stock_adjustments` `down()` method has invalid SQL | ✅ Fixed |
+| Migration gap: `100006` is skipped | ⏳ Pending (cosmetic) |
+| XOR triggers on `sale_items` / `stock_transactions` | ✅ Done |
+| `price_history` table | ✅ Done |
+| Morph short-key conversion migration | ✅ Done |
 
-### 7.3 API Routes
+### 7.3 API Routes — 🔄 **PARTIAL**
+
+> Route definitions exist in `routes/api.php` with Sanctum middleware, but **`bootstrap/app.php` does not register the API routes file** — endpoints are currently unreachable. `AuthController` is referenced but missing.
 
 ```php
 // Current state
@@ -480,19 +672,20 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
 | Component | Status | Impact |
 |-----------|--------|--------|
-| `laravel/sanctum` | Not installed | No auth possible |
-| `spatie/laravel-permission` | Not installed | No RBAC possible |
-| Service layer (13 services) | Not created | No business logic |
-| API Controllers (18+) | Not created | No endpoints |
-| Form Requests | Not created | No input validation |
-| API Resources | Not created | No response shaping |
-| Events & Listeners | Not created | No event-driven patterns |
-| Model Policies | Not created | No authorization |
-| Seeders (RoleSeeder, etc.) | Not created | Cannot bootstrap |
+| `laravel/sanctum` | ✅ Installed | Auth possible once wired |
+| `spatie/laravel-permission` | ✅ Installed | RBAC possible once wired |
+| Service layer (13 services) | 🔄 Stubs only | No real business logic yet |
+| API Controllers (18+) | 🔄 Partial | 13 exist; AuthController missing |
+| Form Requests | 🔄 Partial | 17 files; missing auth + some Update |
+| API Resources | ⏳ Not created | No response shaping |
+| Events & Listeners | ⏳ Not created | No event-driven patterns |
+| Model Policies | ⏳ Not created | No authorization |
+| Seeders (RoleSeeder, etc.) | ⏳ Not created | Cannot bootstrap roles/data |
+| API route registration | ⏳ Not done | `bootstrap/app.php` missing `api:` key |
 
 ---
 
-## 8. Frontend Code Review (Nuxt 3)
+## 8. Frontend Code Review (Nuxt 3) — ⏳ **PENDING (~1% complete)**
 
 ### 8.1 Current State
 
@@ -593,23 +786,10 @@ $this->app->bind(LedgerWriterInterface::class, StockTransactionService::class);
 
 ### 9.4 DRY — Duplications Found
 
-1. **Slug generation** — `FuelType::boot()` and `Product::boot()` both have identical `Str::slug()` logic. Extract to a `HasSlug` trait:
-   ```php
-   // app/Models/Concerns/HasSlug.php
-   trait HasSlug
-   {
-       protected static function bootHasSlug(): void
-       {
-           static::creating(fn($model) => $model->slug = Str::slug($model->title));
-       }
-   }
-   ```
-
-2. **SQLite trigger blocks** — copy-pasted verbatim across `stock_transactions` and `payment_transactions` migrations. Extract to a `MigrationHelper` class.
-
-3. **DB driver check** — `if (Schema::getConnection()->getDriverName() !== 'sqlite')` appears 6 times across migrations.
-
-4. **Sign convention comments** — `positive=in, negative=out` is commented in 4 places but never validated. Centralize in `StockTransactionService`.
+1. **Slug generation** — ✅ **DONE** — extracted to `HasSlug` trait in `app/Models/Concerns/HasSlug.php`
+2. **SQLite trigger blocks** — ⏳ **PENDING** — still copy-pasted across migrations; extract to `MigrationHelper`
+3. **DB driver check** — ⏳ **PENDING** — `if (Schema::getConnection()->getDriverName() !== 'sqlite')` still repeated
+4. **Sign convention comments** — ⏳ **PENDING** — not centralized in `StockTransactionService` yet
 
 ---
 
@@ -617,16 +797,16 @@ $this->app->bind(LedgerWriterInterface::class, StockTransactionService::class);
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Authentication | 🔴 CRITICAL | No Sanctum, all routes public |
-| Authorization (RBAC) | 🔴 CRITICAL | No Spatie, no Policies |
-| Input Validation | 🔴 CRITICAL | No Form Requests exist |
-| Mass Assignment | ⚠️ WARNING | `stockable_type/id` and `slug` should not be in `$fillable` |
+| Authentication | 🔄 PARTIAL | Packages installed; controller, traits, route registration missing |
+| Authorization (RBAC) | ⏳ PENDING | Spatie installed; no policies, seeder, or role checks |
+| Input Validation | 🔄 PARTIAL | Form requests exist but incomplete; API routes not loaded |
+| Mass Assignment | 🔄 PARTIAL | `stockable_type/id` still in `$fillable` on `StockTransaction` |
 | SQL Injection | ✅ SAFE | Eloquent ORM parameterizes all queries |
 | XSS | ✅ N/A | JSON API, no HTML rendering |
-| CSRF | ✅ CORRECT | API token auth, `api/*` excluded from CSRF |
-| Port Exposure | ⚠️ WARNING | PHP-FPM port 9000 exposed to host |
-| Env Security | ⚠️ WARNING | `APP_KEY` not in `.env.example`; no secrets management |
-| Docker Security | ⚠️ WARNING | `git`/`curl` in prod image; unnecessary attack surface |
+| CSRF | 🔄 PARTIAL | Designed for token auth; not wired end-to-end |
+| Port Exposure | ✅ FIXED | PHP-FPM port 9000 no longer exposed in dev compose |
+| Env Security | ⏳ PENDING | `APP_KEY` not enforced in `.env.example` |
+| Docker Security | 🔄 PARTIAL | Prod image improved; dev still has git/curl |
 | SQLite Access | ✅ SAFE | Nginx root is `public/` only; DB file not web-accessible |
 
 **The three critical security items (auth, RBAC, validation) must be implemented before any production or even internal staging deployment.**
@@ -636,21 +816,26 @@ $this->app->bind(LedgerWriterInterface::class, StockTransactionService::class);
 ## 11. Improvement Recommendations
 
 ### Immediate (Fix Before Feature Work)
-1. Fix `AppendOnlyLedger` trait (see §4.1)
-2. Register morph maps in `AppServiceProvider` (see §4.2)
-3. Fix `Sale` model customer relationship (see §4.3)
-4. Add missing enum casts to `PaymentTransaction` (see §4.4)
-5. Install Sanctum + Spatie (see §4.5)
-6. Remove PHP-FPM port 9000 host exposure from `docker-compose.yml`
+1. ✅ Fix `AppendOnlyLedger` trait (see §4.1)
+2. ✅ Register morph maps in `AppServiceProvider` (see §4.2)
+3. ✅ Fix `Sale` model customer relationship (see §4.3)
+4. ✅ Add missing enum casts to `PaymentTransaction` (see §4.4)
+5. 🔄 Install Sanctum + Spatie (see §4.5) — packages done; wiring pending
+6. ✅ Remove PHP-FPM port 9000 host exposure from `docker-compose.yml`
+7. ⏳ **Register API routes in `bootstrap/app.php`** — NEW blocker
+8. ⏳ **Create `AuthController` + User traits** — NEW blocker
 
 ### Short Term (Next Sprint)
-7. Differentiate dev/prod PHP Dockerfiles with multi-stage build
-8. Fix Composer layer caching in both Dockerfiles
-9. Add `--frozen-lockfile` to Node Dockerfile
-10. Add `HasSlug` trait (eliminate boot() duplication)
-11. Add XOR constraint triggers for `sale_items` and `stock_transactions`
-12. Add composite index on `(stockable_type, stockable_id)` for morph tables
-13. Create `RoleSeeder` + `DatabaseSeeder` with Owner account, sample FuelType/Tank/Nozzle
+7. 🔄 Differentiate dev/prod PHP Dockerfiles with multi-stage build — prod done, dev pending
+8. 🔄 Fix Composer layer caching in both Dockerfiles — prod done, dev partial
+9. ✅ Add `--frozen-lockfile` to Node Dockerfile
+10. ✅ Add `HasSlug` trait (eliminate boot() duplication)
+11. ✅ Add XOR constraint triggers for `sale_items` and `stock_transactions`
+12. ✅ Add composite index on `(stockable_type, stockable_id)` for morph tables
+13. ⏳ Create `RoleSeeder` + `DatabaseSeeder` with Owner account, sample FuelType/Tank/Nozzle
+14. ⏳ Generate API Resources for all entities
+15. ⏳ Create Model Policies + wire RBAC
+16. ⏳ Implement service business logic (see Section 0 service table)
 
 ### Service Layer Build Order
 ```
@@ -730,9 +915,9 @@ class StockTransactionService
 ## 12. Production Readiness Checklist
 
 ### Infrastructure
-- [ ] PHP `Dockerfile.prod` — multi-stage, no git/curl, OPcache enabled
-- [ ] PHP-FPM port 9000 NOT exposed to host
-- [ ] Production compose is standalone (not an overlay of dev)
+- [x] PHP `Dockerfile.prod` — multi-stage, no git/curl, OPcache enabled
+- [x] PHP-FPM port 9000 NOT exposed to host
+- [x] Production compose is standalone (not an overlay of dev)
 - [ ] Nginx with SSL/TLS configured
 - [ ] Nginx rate limiting (`limit_req_zone`)
 - [ ] Log rotation for nginx and Laravel logs
@@ -740,17 +925,21 @@ class StockTransactionService
 - [ ] Docker secrets or env injection from secrets manager
 
 ### Application
-- [ ] `laravel/sanctum` installed and configured
-- [ ] `spatie/laravel-permission` installed, roles seeded
-- [ ] All endpoints protected with `auth:sanctum`
-- [ ] All endpoints have Form Request validation
+- [x] `laravel/sanctum` installed
+- [x] `spatie/laravel-permission` installed
+- [ ] Spatie roles seeded
+- [ ] All endpoints protected with `auth:sanctum` (routes defined but not registered)
+- [ ] All endpoints have Form Request validation (partial)
 - [ ] All endpoints return API Resources
-- [ ] `APP_DEBUG=false` in production
+- [ ] `APP_DEBUG=false` in production (set in prod compose)
 - [ ] `APP_KEY` set and >= 32 chars
 - [ ] `config:cache`, `route:cache`, `view:cache` run on deploy
-- [ ] Morph maps registered
-- [ ] `AppendOnlyLedger` trait fixed
-- [ ] DB-level XOR constraints on `sale_items` and `stock_transactions`
+- [x] Morph maps registered
+- [x] `AppendOnlyLedger` trait fixed
+- [x] DB-level XOR constraints on `sale_items` and `stock_transactions`
+- [ ] `AuthController` implemented
+- [ ] API routes registered in `bootstrap/app.php`
+- [ ] Service business logic implemented
 
 ### Testing
 - [ ] Feature tests for all API endpoints
@@ -796,20 +985,20 @@ Simplifies adding audit logging, notifications, and report triggers.
 
 ## Summary Scorecard
 
-| Area | Score | Status |
-|------|-------|--------|
-| Architecture Design | 8/10 | Strong foundation, sound decisions |
-| Data Model / ERD | 9/10 | Excellent domain modeling |
-| Append-Only Ledger | 5/10 | Concept correct, implementation broken |
-| Docker Setup | 6/10 | Functional but dev = prod, port exposed |
-| Backend Implementation | 2/10 | Scaffolding only — nothing built |
-| Frontend Implementation | 1/10 | Proof-of-concept placeholder |
-| Testing | 0/10 | Zero tests |
-| Security | 2/10 | No auth, no validation |
-| Tauri Integration | 0/10 | Not started |
-| Documentation | 8/10 | Implementation plan is excellent |
-| **Overall** | **4.1/10** | **Solid foundation — needs extensive build-out** |
+| Area | Score (was) | Score (now) | Status |
+|------|-------------|-------------|--------|
+| Architecture Design | 8/10 | 8/10 | Strong foundation, sound decisions |
+| Data Model / ERD | 9/10 | 9/10 | Excellent domain modeling |
+| Append-Only Ledger | 5/10 | **8/10** | ✅ Concept + implementation fixed; service logic pending |
+| Docker Setup | 6/10 | **7/10** | 🔄 Prod improved; dev Dockerfile still basic |
+| Backend Implementation | 2/10 | **5/10** | 🔄 Scaffolding done; business logic + API wiring pending |
+| Frontend Implementation | 1/10 | 1/10 | ⏳ Proof-of-concept placeholder |
+| Testing | 0/10 | 0/10 | ⏳ Zero tests |
+| Security | 2/10 | **4/10** | 🔄 Packages installed; auth wiring incomplete |
+| Tauri Integration | 0/10 | 0/10 | ⏳ Not started |
+| Documentation | 8/10 | **9/10** | ✅ Progress tracker added |
+| **Overall** | **4.1/10** | **5.2/10** | **🔄 Scaffolding ~55% — business logic next** |
 
 ---
 
-*End of review — 60+ files reviewed across backend, frontend, Docker, and configuration.*
+*End of review — 60+ files reviewed. Progress audit: August 10, 2026. See Section 0 for live task statuses.*

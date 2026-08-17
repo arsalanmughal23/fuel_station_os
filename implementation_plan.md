@@ -22,6 +22,22 @@ Single-station desktop fuel management system. Manages fuel tanks, nozzles, deli
 | Containerization | Docker + Docker Compose (fully dockerized) |
 | Queue | Laravel Queue (`database` driver) |
 
+## 0. Current Progress
+- [x] `laravel/sanctum` installed and configured in composer packages
+- [x] `spatie/laravel-permission` installed and configured in composer packages
+- [x] `routes/api.php` is protected with `auth:sanctum`
+- [x] `AppServiceProvider::boot()` registers morph maps
+- [x] `app/Services/` directory and service files exist
+- [x] API controllers have been scaffolded under `app/Http/Controllers/`
+- [x] `UserFactory.php` generates `username`
+- [ ] `database/seeders/RoleSeeder.php` is not yet present
+- [ ] `DatabaseSeeder.php` still only seeds a test user, not roles or sample domain data
+- [ ] `app/Http/Controllers/AuthController.php` is missing
+- [ ] `app/Http/Resources/` files have not been generated
+- [ ] API Form Request coverage is partial and incomplete
+- [ ] Policy classes and RBAC role seeding are still pending
+- [ ] Production readiness checklist items remain incomplete
+
 ---
 
 ## 3. Docker Setup

@@ -1,0 +1,961 @@
+#>>> ./docker-compose.yml
+services:
+  # PHP Application (Laravel backend)
+  backend:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: laravel-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./:/var/www/html:delegated
+      - ./vendor:/var/www/html/vendor
+      - ./storage:/var/www/html/storage:delegated
+    environment:
+      - COMPOSER_HOME=/tmp/composer-cache
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "php-fpm", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Queue Worker
+  queue:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: laravel-queue
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www/html:delegated
+      - ./vendor:/var/www/html/vendor
+      - ./storage:/var/www/html/storage:delegated
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Waiting for migrations...' &&
+        while ! php artisan migrate --force --no-interaction 2>/dev/null; do
+          sleep 2;
+        done &&
+        echo 'Starting queue worker...' &&
+        php artisan queue:work --verbose --tries=3 --timeout=90 --sleep=3
+      "
+    env_file:
+      - .env
+    networks:
+      - default
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: laravel-scheduler
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www/html:delegated
+      - ./vendor:/var/www/html/vendor
+      - ./storage:/var/www/html/storage:delegated
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    env_file:
+      - .env
+    networks:
+      - default
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-server
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html:delegated
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - default
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/node/Dockerfile
+    container_name: nuxt-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NUXT_PUBLIC_API_BASE_URL=${NUXT_PUBLIC_API_BASE_URL:-http://localhost:8000/api/v1}
+      - NITRO_PORT=3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/app:delegated
+    networks:
+      - default
+
+networks:
+  default:
+    name: desktop_app_network
+    driver: bridge
+
+
+
+
+
+
+#>>> ./docker/php/entrypoint.sh
+
+#!/bin/sh
+set -e
+
+echo "���� Starting PHP-FPM..."
+
+# === RUNTIME VERIFICATION ONLY ===
+# These operations are fast and idempotent
+
+# Ensure runtime directories exist for Composer and git config.
+export HOME=/tmp
+export XDG_CONFIG_HOME=/tmp/.config
+export GIT_CONFIG_GLOBAL=/tmp/.gitconfig
+export COMPOSER_HOME=/tmp/composer-cache
+export PSYSH_CONFIG_DIR=/tmp/.config/psysh
+mkdir -p /tmp/composer-cache /tmp/.config /tmp/.config/psysh /tmp/.gitconfig bootstrap/cache
+chmod -R 775 /tmp/composer-cache /tmp/.config /tmp/.config/psysh /tmp/.gitconfig bootstrap/cache 2>/dev/null || true
+
+# Ensure Laravel directories exist and are writable (if we have permission)
+if [ -d /var/www/bootstrap ]; then
+    mkdir -p /var/www/bootstrap/cache
+    chmod -R 775 /var/www/bootstrap/cache 2>/dev/null || true
+fi
+if [ -d /var/www/storage ]; then
+    mkdir -p /var/www/storage/framework/cache /var/www/storage/framework/sessions /var/www/storage/framework/views /var/www/storage/logs
+    chmod -R 775 /var/www/storage/framework /var/www/storage/logs 2>/dev/null || true
+fi
+
+# Bootstrap vendor dependencies in non-production bind-mounted workspaces.
+if [ "${APP_ENV:-local}" != "production" ] && [ ! -f vendor/autoload.php ]; then
+  echo "���� vendor not found, installing Composer dependencies..."
+  git config --global --add safe.directory /var/www/html || true
+  COMPOSER_ALLOW_SUPERUSER=1 HOME=/tmp COMPOSER_HOME=/tmp/composer-cache composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+  chown -R www-data:www-data vendor composer.lock 2>/dev/null || true
+fi
+
+# Set environment (just in case)
+export HOME=/var/www
+export COMPOSER_HOME=/tmp/composer-cache
+export PSYSH_CONFIG_DIR=/tmp/.config/psysh
+
+exec "$@"
+
+
+
+
+
+
+#>>> ./docker/php/Dockerfile
+FROM php:8.4-fpm
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    sqlite3 \
+    libsqlite3-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-install \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    pdo_sqlite
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy composer files first for better layer caching
+COPY composer.json composer.lock ./
+
+# Install dependencies (will be cached if composer files don't change)
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+
+# Copy application files
+COPY . .
+
+RUN composer dump-autoload --optimize
+
+RUN mkdir -p /var/www/.config && chown -R www-data:www-data /var/www/.config
+
+# Copy entrypoint (runtime verification only) with executable permissions
+COPY --chmod=+x docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+# Set environment variables
+ENV HOME=/var/www \
+    COMPOSER_HOME=/tmp/composer-cache
+
+# Change current user to www
+USER www-data
+
+EXPOSE 9000
+
+# Use entrypoint for runtime setup only
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["php-fpm"]
+
+
+
+
+
+
+#>>> ./docker/nginx/default.conf
+
+server {
+    listen 80;
+    server_name localhost;
+    root /var/www/html/public;
+    index index.php index.html;
+
+    # Handle static files
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # API routes
+    location /api {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # PHP processing
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass backend:9000;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+    }
+
+    # Deny access to hidden files
+    location ~ /\.(ht|svn|git) {
+        deny all;
+    }
+
+    # Static assets caching
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Enable gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+}
+
+
+
+
+
+
+#>>> ./docker/node/Dockerfile
+FROM node:20-alpine
+
+# Install build tools
+RUN apk add --no-cache git python3 make g++
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY frontend/package*.json ./
+COPY frontend/pnpm-lock.yaml ./
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Install dependencies (allow updating lockfile for development)
+RUN pnpm install
+
+# Copy source code
+COPY frontend/ .
+
+# Generate Nuxt types
+RUN pnpm run postinstall || true
+
+EXPOSE 3000
+
+CMD ["pnpm", "run", "dev"]
+
+
+
+
+
+
+#>>> ./makefile
+
+# Makefile for Fuel Station OS
+# ============================
+# Usage: make [target]
+
+# Colors
+GREEN  := $(shell tput -Txterm setaf 2)
+YELLOW := $(shell tput -Txterm setaf 3)
+RED    := $(shell tput -Txterm setaf 1)
+WHITE  := $(shell tput -Txterm setaf 7)
+RESET  := $(shell tput -Txterm sgr0)
+
+# Read APP_PORT from .env file if it exists
+ifneq ($(wildcard .env),)
+    include .env
+    export
+    APP_PORT := $(APP_PORT)
+endif
+
+# Default port if not set in .env
+APP_PORT ?= 8001
+
+.PHONY: help dev setup rebuild logs shell tinker migrate fresh seed test clear status down clean full-clean build-prune prod prod-build prod-down prod-logs prod-status health rmi update-deps
+
+# Add these to PHONY
+.PHONY: artisan composer
+
+help: ## Show this help message
+	@echo ''
+	@echo '${GREEN}Fuel Station OS${RESET} - Development Commands'
+	@echo '========================================'
+	@grep -E '^[a-z].*:.*?## .*$$' $(MAKEFILE_LIST) | grep -v 'prod' | grep -v 'prune' | grep -v '^help' | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${GREEN}%-15s${RESET} %s\n", $$1, $$2}'
+	@echo ''
+	@echo '${YELLOW}Production Commands${RESET}'
+	@echo '========================================'
+	@grep -E '^prod.*:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${YELLOW}%-15s${RESET} %s\n", $$1, $$2}'
+	@echo ''
+	@echo '${RED}Utility Commands${RESET}'
+	@echo '========================================'
+	@grep -E '^[a-zA-Z_-]+-prune:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = "-prune:.*?## "}; {printf "  ${RED}%-15s${RESET} %s\n", $$1, $$2}'
+
+# Development Commands
+
+dev: ## Start development environment
+	@echo "${GREEN}🚀 Starting development environment...${RESET}"
+	@docker compose up -d
+	@echo "${YELLOW}⏳ Waiting for containers to be ready...${RESET}"
+	@sleep 5
+	@$(MAKE) setup
+	@echo ""
+	@echo "${GREEN}🌐 Access your application:${RESET}"
+	@echo "  Backend: http://localhost:${APP_PORT}"
+	@echo "  Backend API: http://localhost:${APP_PORT}/api/health"
+	@echo "  Frontend: http://localhost:3000"
+	@echo ""
+	@$(MAKE) status
+
+setup: ## Run initial setup (first time only)
+	@echo "${GREEN}🔧 Running initial setup...${RESET}"
+	@docker compose exec -u root backend sh -c "\
+		git config --global --add safe.directory /var/www/html 2>/dev/null || true && \
+		if [ ! -d vendor ] || [ -z \"\$$(ls -A vendor 2>/dev/null)\" ]; then \
+			echo '📦 Installing dependencies...'; \
+			if [ -f composer.lock ]; then \
+				echo '📋 Installing from lock file...'; \
+				composer install --no-interaction --prefer-dist --ignore-platform-req=php; \
+			else \
+				echo '⚠️  No composer.lock found. Creating one...'; \
+				composer update --no-interaction --prefer-dist --ignore-platform-req=php; \
+			fi; \
+		else \
+			echo '✅ Vendor directory already exists, skipping composer install'; \
+		fi && \
+		if [ ! -f storage/database/.initialized ]; then \
+			echo '🗄️ Running migrations...'; \
+			php artisan migrate --force --no-interaction; \
+			touch storage/database/.initialized; \
+		fi && \
+		if ! grep -q '^APP_KEY=' .env || [ -z \"\$$(grep '^APP_KEY=' .env | cut -d= -f2)\" ]; then \
+			echo '🔑 Generating application key...'; \
+			php artisan key:generate --force; \
+		fi && \
+		echo '✅ Setup complete!' \
+	" 2>/dev/null || echo "${RED}❌ Setup failed. Please run manually: docker compose exec backend composer install${RESET}"
+
+rebuild: ## Rebuild containers
+	@echo "${GREEN}🏗️ Rebuilding containers...${RESET}"
+	docker compose build --no-cache
+	@$(MAKE) dev
+
+logs: ## View all logs
+	docker compose logs -f
+
+shell: ## Open shell in backend container
+	@if docker compose ps --status running | grep -q backend; then \
+		docker compose exec backend sh; \
+	else \
+		echo "${RED}❌ Backend container is not running. Please run 'make dev' first.${RESET}"; \
+	fi
+
+tinker: ## Open Laravel tinker
+	@if docker compose ps --status running | grep -q backend; then \
+		docker compose exec backend php artisan tinker; \
+	else \
+		echo "${RED}❌ Backend container is not running. Please run 'make dev' first.${RESET}"; \
+	fi
+
+migrate: ## Run migrations
+	@if docker compose ps --status running | grep -q backend; then \
+		docker compose exec backend php artisan migrate --force; \
+	else \
+		echo "${RED}❌ Backend container is not running. Please run 'make dev' first.${RESET}"; \
+	fi
+
+fresh: ## Fresh migration (drop all tables and re-run)
+	@if docker compose ps --status running | grep -q backend; then \
+		docker compose exec backend php artisan migrate:fresh --force; \
+		docker compose exec backend rm -f storage/database/.initialized 2>/dev/null || true; \
+		$(MAKE) setup; \
+	else \
+		echo "${RED}❌ Backend container is not running. Please run 'make dev' first.${RESET}"; \
+	fi
+
+seed: ## Run seeders
+	@if docker compose ps --status running | grep -q backend; then \
+		docker compose exec backend php artisan db:seed --force; \
+	else \
+		echo "${RED}❌ Backend container is not running. Please run 'make dev' first.${RESET}"; \
+	fi
+
+test: ## Run tests
+	@if docker compose ps --status running | grep -q backend; then \
+		docker compose exec backend php artisan test; \
+	else \
+		echo "${RED}❌ Backend container is not running. Please run 'make dev' first.${RESET}"; \
+	fi
+
+clear: ## Clear all caches
+	@if docker compose ps --status running | grep -q backend; then \
+		docker compose exec backend php artisan optimize:clear; \
+	else \
+		echo "${YELLOW}⚠️ Backend container is not running. Starting it first...${RESET}"; \
+		make dev; \
+		docker compose exec backend php artisan optimize:clear; \
+	fi
+
+artisan: ## Run artisan commands (usage: make artisan CMD="cache:clear")
+	@if docker compose ps --status running | grep -q backend; then \
+		docker compose exec backend php artisan $(CMD); \
+	else \
+		echo "${RED}❌ Backend container is not running. Please run 'make dev' first.${RESET}"; \
+	fi
+
+composer: ## Run composer commands (usage: make composer CMD="require package")
+	@if docker compose ps --status running | grep -q backend; then \
+		docker compose exec -u root backend sh -c "\
+			git config --global --add safe.directory /var/www/html 2>/dev/null || true && \
+			composer $(CMD) \
+		"; \
+	else \
+		echo "${RED}❌ Backend container is not running. Please run 'make dev' first.${RESET}"; \
+	fi
+
+status: ## Show container status
+	@echo "${GREEN}📊 Container Status:${RESET}"
+	@docker compose ps 2>/dev/null || echo "${RED}❌ No containers running. Run 'make dev' to start.${RESET}"
+
+down: ## Stop all containers
+	@echo "${YELLOW}🛑 Stopping containers...${RESET}"
+	docker compose down
+
+clean: ## Clean everything EXCEPT composer.lock
+	@echo "${YELLOW}🧹 Cleaning frontend/{.nuxt, .output} & compose down -v...${RESET}"
+	docker compose down -v
+	rm -rf frontend/.nuxt frontend/.output
+	@echo "${GREEN}✅ Clean complete!${RESET}"
+
+full-clean: ## Clean EVERYTHING including composer.lock
+	@echo "${RED}⚠️  WARNING: This will remove composer.lock and vendor!${RESET}"
+	@echo "${YELLOW}Are you sure? Type 'yes' to continue:${RESET}" && read answer && [ "$$answer" = "yes" ]
+	docker compose down -v
+	rm -rf bootstrap/cache/*.php
+	rm -rf vendor composer.lock
+	rm -f storage/database/database.sqlite
+	rm -f storage/database/.initialized
+	rm -rf frontend/.nuxt frontend/.output frontend/node_modules frontend/.pnpm-store
+	@echo "${GREEN}✅ Full clean complete!${RESET}"
+
+rmi: ## Remove all matching images (fuel_station_os-*)
+	@echo "${YELLOW}🗑️ Removing fuel_station_os-* images...${RESET}"
+	@IMAGES=$$(docker images fuel_station_os-* -q 2>/dev/null); \
+	if [ -n "$$IMAGES" ]; then \
+		docker rmi $$IMAGES; \
+		echo "${GREEN}✅ Images removed!${RESET}"; \
+	else \
+		echo "${GREEN}ℹ️ No matching images found.${RESET}"; \
+	fi
+
+update-deps: ## Update dependencies (composer update)
+	@echo "${YELLOW}📦 Updating dependencies...${RESET}"
+	docker compose exec -u root backend sh -c "\
+		git config --global --add safe.directory /var/www/html 2>/dev/null || true && \
+		composer update --no-interaction --prefer-dist \
+	"
+	@echo "${GREEN}✅ Dependencies updated!${RESET}"
+
+# Utility Commands
+
+build-prune: ## Prune Docker builder cache (remove all unused build cache)
+	@echo "${YELLOW}🧹 Pruning Docker builder cache...${RESET}"
+	docker builder prune -a -f
+	@echo "${GREEN}✅ Builder cache pruned!${RESET}"
+
+image-prune: ## Prune Docker images (remove dangling images)
+	@echo "${YELLOW}🧹 Pruning Docker images...${RESET}"
+	docker image prune -a -f
+	@echo "${GREEN}✅ Images pruned!${RESET}"
+
+volume-prune: ## Prune Docker volumes (remove unused volumes)
+	@echo "${YELLOW}🧹 Pruning Docker volumes...${RESET}"
+	docker volume prune -f
+	@echo "${GREEN}✅ Volumes pruned!${RESET}"
+
+system-prune: ## Prune all Docker system resources (use with caution)
+	@echo "${RED}⚠️  WARNING: This will remove all unused Docker resources!${RESET}"
+	@echo "${YELLOW}Are you sure? Type 'yes' to continue:${RESET}" && read answer && [ "$$answer" = "yes" ]
+	docker system prune -a -f --volumes
+	@echo "${GREEN}✅ System pruned!${RESET}"
+
+# Production Commands
+
+prod: ## Start production environment
+	@echo "${GREEN}🚀 Starting production environment...${RESET}"
+	@if [ ! -f .env.production ]; then \
+		echo "${YELLOW}📄 Creating .env.production from .env.example...${RESET}"; \
+		cp .env.example .env.production; \
+		echo "${RED}⚠️ Please update .env.production with production values!${RESET}"; \
+	fi
+	docker compose -f docker-compose.prod.yml up -d
+	@echo "${GREEN}✅ Production environment ready!${RESET}"
+
+prod-build: ## Build production images
+	@echo "${GREEN}🏗️ Building production images...${RESET}"
+	docker compose -f docker-compose.prod.yml build --no-cache
+
+prod-down: ## Stop production environment
+	@echo "${YELLOW}🛑 Stopping production...${RESET}"
+	docker compose -f docker-compose.prod.yml down
+
+prod-logs: ## View production logs
+	docker compose -f docker-compose.prod.yml logs -f
+
+prod-status: ## Show production container status
+	docker compose -f docker-compose.prod.yml ps
+
+prod-clean: ## Clean production environment
+	@echo "${YELLOW}🧹 Cleaning production...${RESET}"
+	docker compose -f docker-compose.prod.yml down -v
+	@echo "${GREEN}✅ Production clean complete!${RESET}"
+
+# Health Check
+health: ## Check application health
+	@echo "${GREEN}🔍 Checking health...${RESET}"
+	@echo "${YELLOW}Backend:${RESET}"
+	@curl -s http://localhost:${APP_PORT:-8001}/api/health 2>/dev/null | jq . 2>/dev/null || echo "❌ Backend not responding"
+	@echo ""
+	@echo "${YELLOW}Frontend:${RESET}"
+	@curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null | grep -q 200 && echo "✅ Frontend is running" || echo "❌ Frontend not responding"
+
+# Default target
+.DEFAULT_GOAL := help
+
+
+
+
+
+
+#>>> ./docker-compose.prod.yml
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile.prod
+    container_name: laravel-backend-prod
+    restart: always
+    # No port exposure for PHP-FPM in production
+    env_file:
+      - .env.production
+    volumes:
+      - app_storage:/var/www/html/storage
+      - db_data:/var/www/html/storage/database
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - COMPOSER_HOME=/tmp/composer-cache
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "php-fpm", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  queue:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile.prod
+    container_name: laravel-queue-prod
+    restart: always
+    volumes:
+      - app_storage:/var/www/html/storage
+      - db_data:/var/www/html/storage/database
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Waiting for migrations...' &&
+        while ! php artisan migrate --force --no-interaction 2>/dev/null; do
+          sleep 2;
+        done &&
+        echo 'Starting queue worker...' &&
+        php artisan queue:work --verbose --tries=3 --timeout=90 --sleep=3
+      "
+    env_file:
+      - .env.production
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile.prod
+    container_name: laravel-scheduler-prod
+    restart: always
+    volumes:
+      - app_storage:/var/www/html/storage
+      - db_data:/var/www/html/storage/database
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    env_file:
+      - .env.production
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-server-prod
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./public:/var/www/html/public:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/node/Dockerfile.prod
+    container_name: nuxt-frontend-prod
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NUXT_PUBLIC_API_BASE_URL=${NUXT_PUBLIC_API_BASE_URL}
+      - NITRO_PORT=3000
+      - NODE_ENV=production
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+volumes:
+  app_storage:
+  db_data:
+  nginx_logs:
+
+networks:
+  default:
+    name: desktop_app_network_prod
+    driver: bridge
+
+
+
+
+
+
+#>>> ./docker/php/Dockerfile.prod
+# Build stage
+FROM php:8.4-fpm AS builder
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    sqlite3 \
+    libsqlite3-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-install \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    pdo_sqlite
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy composer files first for better layer caching
+COPY composer.json composer.lock ./
+
+# Install dependencies (including dev for build)
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+
+# Copy application files
+COPY . .
+
+RUN composer dump-autoload --optimize
+
+# === BUILD-TIME SETUP ===
+RUN mkdir -p bootstrap/cache \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    storage/database \
+    /tmp/composer-cache \
+    /var/www/.config \
+    && chown -R www-data:www-data /var/www/html/bootstrap /var/www/html/storage /tmp/composer-cache /var/www/.config \
+    && chmod -R 775 /var/www/html/bootstrap /var/www/html/storage /tmp/composer-cache /var/www/.config
+
+# Create empty cache files to prevent errors
+RUN echo '<?php return [];' > bootstrap/cache/packages.php && \
+    echo '<?php return [];' > bootstrap/cache/services.php && \
+    chown www-data:www-data bootstrap/cache/*.php && \
+    chmod 664 bootstrap/cache/*.php
+
+# Production stage
+FROM php:8.4-fpm AS final
+
+# Install only runtime dependencies - no git, no curl
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    libsqlite3-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions with OPcache
+RUN docker-php-ext-install \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    pdo_sqlite \
+    opcache
+
+# Copy Composer from builder
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Copy built application from builder
+COPY --from=builder /var/www/html /var/www/html
+
+# Copy entrypoint script
+COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Set environment variables
+ENV HOME=/var/www \
+    COMPOSER_HOME=/tmp/composer-cache \
+    APP_ENV=production \
+    APP_DEBUG=false
+
+# Change current user to www
+USER www-data
+
+EXPOSE 9000
+
+# Use entrypoint for runtime setup only
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["php-fpm"]
+
+
+
+
+
+
+#>>> ./docker/node/Dockerfile.prod
+# Build stage
+FROM node:20-alpine AS builder
+
+# Install build tools
+RUN apk add --no-cache git python3 make g++
+
+WORKDIR /app
+
+# Copy package files
+COPY frontend/package*.json ./
+COPY frontend/pnpm-lock.yaml ./
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Install dependencies with frozen lockfile
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY frontend/ .
+
+# Build application
+RUN pnpm run build
+
+# Production stage
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy built files from builder
+COPY --from=builder /app/.output /app/.output
+COPY --from=builder /app/package*.json ./
+
+# Install only production dependencies with frozen lockfile
+RUN npm install -g pnpm && \
+    pnpm install --prod --frozen-lockfile
+
+EXPOSE 3000
+
+CMD ["node", ".output/server/index.mjs"]
+
+
+
+
+
+
+#>>> Terminal Output
+arsalan@arsalan-ThinkPad-E460:/var/www/html/fuel_station_os$ make rebuild
+🏗️ Rebuilding containers...
+docker compose build --no-cache
+[+] Building 852.2s (38/38) FINISHED                                                                                                                                                                                                          
+ => [internal] load local bake definitions                                                                                                                                                                                               0.0s
+ => => reading from stdin 2.00kB
+ .
+ ..
+ ...
+ => [queue] resolving provenance for metadata file                                                                                                                                                                                       0.2s
+ => [backend] resolving provenance for metadata file                                                                                                                                                                                     0.1s
+[+] build 4/4
+ ✔ Image fuel_station_os-backend   Built                                                                                                                                                                                                852.5s
+ ✔ Image fuel_station_os-queue     Built                                                                                                                                                                                                852.5s
+ ✔ Image fuel_station_os-scheduler Built                                                                                                                                                                                                852.5s
+ ✔ Image fuel_station_os-frontend  Built                                                                                                                                                                                                852.5s
+make[1]: Entering directory '/var/www/html/fuel_station_os'
+🚀 Starting development environment...
+[+] up 6/6
+ ✔ Network desktop_app_network Created                                                                                                                                                                                                    0.3s
+ ✔ Container laravel-backend   Healthy                                                                                                                                                                                                   25.9s
+ ✔ Container nuxt-frontend     Started                                                                                                                                                                                                   26.9s
+ ✔ Container laravel-queue     Started                                                                                                                                                                                                   27.1s
+ ✔ Container nginx-server      Started                                                                                                                                                                                                   27.4s
+ ✔ Container laravel-scheduler Started                                                                                                                                                                                                   26.8s
+⏳ Waiting for containers to be ready...
+make[2]: Entering directory '/var/www/html/fuel_station_os'
+🔧 Running initial setup...
+✅ Vendor directory already exists, skipping composer install
+✅ Setup complete!
+make[2]: Leaving directory '/var/www/html/fuel_station_os'
+
+🌐 Access your application:
+  Backend: http://localhost:8080
+  Backend API: http://localhost:8080/api/health
+  Frontend: http://localhost:3000
+
+make[2]: Entering directory '/var/www/html/fuel_station_os'
+📊 Container Status:
+NAME                IMAGE                       COMMAND                  SERVICE     CREATED          STATUS                    PORTS
+laravel-backend     fuel_station_os-backend     "/usr/local/bin/entr…"   backend     36 seconds ago   Up 17 seconds (healthy)   9000/tcp
+laravel-queue       fuel_station_os-queue       "/usr/local/bin/entr…"   queue       33 seconds ago   Up 9 seconds              9000/tcp
+laravel-scheduler   fuel_station_os-scheduler   "/usr/local/bin/entr…"   scheduler   33 seconds ago   Up 9 seconds              9000/tcp
+nginx-server        nginx:alpine                "/docker-entrypoint.…"   nginx       33 seconds ago   Up 9 seconds              0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+nuxt-frontend       fuel_station_os-frontend    "docker-entrypoint.s…"   frontend    33 seconds ago   Up 9 seconds              0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+make[2]: Leaving directory '/var/www/html/fuel_station_os'
+make[1]: Leaving directory '/var/www/html/fuel_station_os'
+
+
+how can i run as desktop app and how can i make executeable (.exe, .deb & etc) files

@@ -22,18 +22,15 @@ class Delivery extends Model
         'received_at',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'invoiced_liters' => 'decimal:3',
-            'deep_reading_before' => 'decimal:3',
-            'deep_reading_after' => 'decimal:3',
-            'actual_received_liters' => 'decimal:3',
-            'shortage_from_order' => 'decimal:3',
-            'shortage_from_delivery' => 'decimal:3',
-            'received_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'invoiced_liters' => 'decimal:3',
+        'deep_reading_before' => 'decimal:3',
+        'deep_reading_after' => 'decimal:3',
+        'actual_received_liters' => 'decimal:3',
+        'shortage_from_order' => 'decimal:3',
+        'shortage_from_delivery' => 'decimal:3',
+        'received_at' => 'datetime',
+    ];
 
     public function purchaseOrder(): BelongsTo
     {

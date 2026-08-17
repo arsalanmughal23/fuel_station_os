@@ -18,16 +18,13 @@ class DeepReading extends Model
         'recorded_at',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'deep_cm' => 'decimal:3',
-            'calibrated_volume_liters' => 'decimal:3',
-            'system_stock_at_reading' => 'decimal:3',
-            'variance_liters' => 'decimal:3',
-            'recorded_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'deep_cm' => 'decimal:3',
+        'calibrated_volume_liters' => 'decimal:3',
+        'system_stock_at_reading' => 'decimal:3',
+        'variance_liters' => 'decimal:3',
+        'recorded_at' => 'datetime',
+    ];
 
     public function tank(): BelongsTo
     {

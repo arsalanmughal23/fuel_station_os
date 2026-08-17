@@ -185,9 +185,9 @@ full-clean: ## Clean EVERYTHING including composer.lock
 	rm -rf frontend/.nuxt frontend/.output frontend/node_modules frontend/.pnpm-store
 	@echo "${GREEN}✅ Full clean complete!${RESET}"
 
-rmi: ## Remove all matching images (fuel_station*)
-	@echo "${YELLOW}🗑️ Removing fuel_station* images...${RESET}"
-	@IMAGES=$$(docker images fuel_station* -q 2>/dev/null); \
+rmi: ## Remove all matching images (fuel_station_os-*)
+	@echo "${YELLOW}🗑️ Removing fuel_station_os-* images...${RESET}"
+	@IMAGES=$$(docker images fuel_station_os-* -q 2>/dev/null); \
 	if [ -n "$$IMAGES" ]; then \
 		docker rmi $$IMAGES; \
 		echo "${GREEN}✅ Images removed!${RESET}"; \

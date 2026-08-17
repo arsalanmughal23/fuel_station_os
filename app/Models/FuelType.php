@@ -15,12 +15,9 @@ class FuelType extends Model
         'current_price',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'current_price' => 'decimal:2',
-        ];
-    }
+    protected $casts = [
+        'current_price' => 'decimal:2',
+    ];
 
     public function tanks(): HasMany
     {

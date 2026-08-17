@@ -20,12 +20,14 @@ class Tank extends Model
         'capacity_liters',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'capacity_liters' => 'decimal:3',
-        ];
-    }
+    protected $casts = [
+        'capacity_liters' => 'decimal:3',
+        'calculated_stock' => 'decimal:3',
+    ];
+
+    protected $guarded = [
+        'calculated_stock',
+    ];
 
     public function fuelType(): BelongsTo
     {
@@ -67,8 +69,8 @@ class Tank extends Model
      *
      * @return int
      */
-    public function getCalculatedStockAttribute()
+    public function getCalculatedStockAttribute($value)
     {
-        return $this->stockTransactions()->sum('quantity');
+        return $value !== null ? $value : $this->stockTransactions()->sum('quantity');
     }
 }

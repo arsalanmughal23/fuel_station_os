@@ -20,18 +20,15 @@ class Sale extends Model
         'sale_date',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'total_amount' => 'decimal:2',
-            'paid_amount' => 'decimal:2',
-            'change_amount' => 'decimal:2',
-            'payment_status' => SalePaymentStatus::class,
-            'sale_date' => 'datetime',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'total_amount' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
+        'change_amount' => 'decimal:2',
+        'payment_status' => SalePaymentStatus::class,
+        'sale_date' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 
     public function user(): BelongsTo
     {

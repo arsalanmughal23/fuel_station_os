@@ -13,13 +13,10 @@ class TankCalibration extends Model
         'volume_liters',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'deep_cm' => 'decimal:3',
-            'volume_liters' => 'decimal:3',
-        ];
-    }
+    protected $casts = [
+        'deep_cm' => 'decimal:3',
+        'volume_liters' => 'decimal:3',
+    ];
 
     public function tank(): BelongsTo
     {

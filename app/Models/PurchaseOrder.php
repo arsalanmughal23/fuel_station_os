@@ -19,15 +19,12 @@ class PurchaseOrder extends Model
         'status',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'ordered_liters' => 'decimal:3',
-            'price_per_liter' => 'decimal:2',
-            'total_amount' => 'decimal:2',
-            'status' => PurchaseOrderStatus::class,
-        ];
-    }
+    protected $casts = [
+        'ordered_liters' => 'decimal:3',
+        'price_per_liter' => 'decimal:2',
+        'total_amount' => 'decimal:2',
+        'status' => PurchaseOrderStatus::class,
+    ];
 
     public function account(): BelongsTo
     {

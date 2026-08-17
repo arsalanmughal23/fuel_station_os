@@ -30,10 +30,6 @@ return new class extends Migration
             $table->index(["user_id", "created_at"]);
             $table->index(["stockable_type", "stockable_id", "created_at"], "st_stockable_idx");
 
-            // Add check constraint for unit
-            if (Schema::getConnection()->getDriverName() !== "sqlite") {
-                $table->check("unit IN (\"ltr\", \"piece\", \"box\", \"kg\", \"ml\")", "stock_transactions_unit_check");
-            }
         });
 
         if (Schema::getConnection()->getDriverName() === "sqlite") {
@@ -57,14 +53,31 @@ return new class extends Migration
             DB::statement("
                 CREATE TRIGGER update_tank_stock_after_insert
                 AFTER INSERT ON stock_transactions
-                WHEN NEW.stockable_type = \"App\\\\Models\\\\Tank\"
+                    WHEN NEW.stockable_type = \"App\\\\Models\\\\Tank\" OR NEW.stockable_type = \"Tank\"
                 BEGIN
                     UPDATE tanks
                     SET calculated_stock = (
                         SELECT COALESCE(SUM(quantity), 0)
                         FROM stock_transactions
-                        WHERE stockable_type = \"App\\\\Models\\\\Tank\"
+                            WHERE (stockable_type = \"App\\\\Models\\\\Tank\" OR stockable_type = \"Tank\")
                         AND stockable_id = NEW.stockable_id
+                    )
+                    WHERE id = NEW.stockable_id;
+                END
+            ");
+
+            // Trigger to maintain products.current_stock
+            DB::statement("
+                CREATE TRIGGER update_product_stock_after_insert
+                AFTER INSERT ON stock_transactions
+                    WHEN NEW.stockable_type = \"App\\\\Models\\\\Product\" OR NEW.stockable_type = \"Product\"
+                BEGIN
+                    UPDATE products
+                    SET current_stock = (
+                        SELECT COALESCE(SUM(quantity), 0)
+                        FROM stock_transactions
+                        WHERE (stockable_type = \"App\\\\Models\\\\Product\" OR stockable_type = \"Product\")
+                          AND stockable_id = NEW.stockable_id
                     )
                     WHERE id = NEW.stockable_id;
                 END
@@ -99,6 +112,7 @@ return new class extends Migration
             DB::statement("DROP TRIGGER IF EXISTS stock_transactions_prevent_update");
             DB::statement("DROP TRIGGER IF EXISTS stock_transactions_prevent_delete");
             DB::statement("DROP TRIGGER IF EXISTS update_tank_stock_after_insert");
+            DB::statement("DROP TRIGGER IF EXISTS update_product_stock_after_insert");
             DB::statement("DROP TRIGGER IF EXISTS stock_transactions_xor_check");
         }
 

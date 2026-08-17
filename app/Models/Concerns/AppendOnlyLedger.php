@@ -12,7 +12,20 @@ trait AppendOnlyLedger
     protected static function bootAppendOnlyLedger(): void
     {
         static::updating(function (Model $model) {
-            throw new \RuntimeException(static::class.' is append-only and cannot be updated.');
+            // Allow models to opt-in to limited updates by defining
+            // a `$appendOnlyAllowAttributes` array of attribute names.
+            $allowed = $model->appendOnlyAllowAttributes ?? [];
+
+            if (!is_array($allowed) || empty($allowed)) {
+                throw new \RuntimeException(static::class.' is append-only and cannot be updated.');
+            }
+
+            $dirty = array_keys($model->getDirty());
+            $disallowed = array_diff($dirty, $allowed);
+
+            if (!empty($disallowed)) {
+                throw new \RuntimeException(static::class.' is append-only. Attempted to update disallowed attributes: '.implode(',', $disallowed));
+            }
         });
 
         static::deleting(function (Model $model) {
@@ -25,7 +38,19 @@ trait AppendOnlyLedger
      */
     public function update(array $attributes = [], array $options = []): bool
     {
-        throw new \RuntimeException(static::class.' is append-only and cannot be updated.');
+        $allowed = $this->appendOnlyAllowAttributes ?? [];
+
+        if (!is_array($allowed) || empty($allowed)) {
+            throw new \RuntimeException(static::class.' is append-only and cannot be updated.');
+        }
+
+        $disallowed = array_diff(array_keys($attributes), $allowed);
+
+        if (!empty($disallowed)) {
+            throw new \RuntimeException(static::class.' is append-only. Attempted to update disallowed attributes: '.implode(',', $disallowed));
+        }
+
+        return parent::update($attributes, $options);
     }
 
     /**
