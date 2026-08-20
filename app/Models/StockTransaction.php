@@ -47,8 +47,6 @@ class StockTransaction extends Model
     }
 
     protected $fillable = [
-        'stockable_type',
-        'stockable_id',
         'unit',
         'quantity',
         'balance_after',
