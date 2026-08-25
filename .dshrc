@@ -1,0 +1,14 @@
+
+# DSH Project Configuration — REPLACE THESE VALUES
+export DSH_PROJECT_NAME="fuel_station_os"        # e.g., my_project
+export DSH_PROJECT_TYPE="desktop+web hybrid"        # e.g., desktop+web hybrid
+export DSH_TEAM_NAME="production_team"              # e.g., production_team
+export DSH_PROJECT_ROOT="$(pwd)"
+export DSH_MEMORY_LAYER="project"
+export DSH_PROJECT_ANCHOR="true"
+export DSH_MEMORY_WORKFLOW="suggested"
+export DSH_DEFAULT_MODEL="nemotron-3-ultra-free"
+
+export DSH_KEY_FEATURES="fuel purchase & sales, gain & loss, tank monitoring, inventory, POS, reporting, nozzle readings, payments, user accounts, billing & invoice"
+export DSH_TECH_STACK="Laravel + Vue/Nuxt + SQLite + TypeScript"
+export DSH_PROJECT_SCOPE="single-station, offline-first, desktop+web"
