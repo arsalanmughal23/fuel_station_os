@@ -19,7 +19,8 @@ return new class extends Migration
             $table->string('contact')->nullable();
             $table->decimal('opening_balance', 12, 2)->default(0);
             $table->decimal('current_balance', 12, 2)->default(0);
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
+            // No updated_at - model uses UPDATED_AT = null
 
             $table->index('account_type');
         });

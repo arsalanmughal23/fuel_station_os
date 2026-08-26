@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ScaleUnit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class SaleItem extends Model
@@ -16,14 +17,14 @@ class SaleItem extends Model
         'unit',
         'quantity',
         'unit_price',
-        'total_price',
+        'amount',
     ];
 
     protected $casts = [
         'unit' => ScaleUnit::class,
         'quantity' => 'decimal:3',
         'unit_price' => 'decimal:4',
-        'total_price' => 'decimal:2',
+        'amount' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -46,5 +47,10 @@ class SaleItem extends Model
     public function stockTransaction(): HasOne
     {
         return $this->hasOne(StockTransaction::class);
+    }
+
+    public function stockTransactions(): HasMany
+    {
+        return $this->hasMany(StockTransaction::class);
     }
 }

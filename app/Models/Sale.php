@@ -55,6 +55,6 @@ class Sale extends Model
      */
     public function calculateTotalAmount(): float
     {
-        return $this->saleItems()->sum('total_price');
+        return $this->saleItems()->sum('amount');
     }
 }

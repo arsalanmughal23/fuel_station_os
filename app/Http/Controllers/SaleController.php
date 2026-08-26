@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSaleRequest;
+use App\Http\Resources\SaleResource;
 use App\Models\Sale;
 use App\Services\SaleService;
 
@@ -14,16 +15,16 @@ class SaleController extends Controller
 
     public function index()
     {
-        return Sale::with(['user', 'account'])->get();
+        return SaleResource::collection(Sale::with(['user', 'account', 'saleItems.product', 'saleItems.nozzleReading.nozzle.tank.fuelType', 'paymentTransaction'])->get());
     }
 
     public function show(Sale $sale)
     {
-        return $sale->load(['user', 'account', 'saleItems']);
+        return new SaleResource($sale->load(['user', 'account', 'saleItems.product', 'saleItems.nozzleReading.nozzle.tank.fuelType', 'paymentTransaction']));
     }
 
     public function store(StoreSaleRequest $request)
     {
-        return $this->service->create($request->validated());
+        return new SaleResource($this->service->createSale($request->validated(), auth()->id()));
     }
 }

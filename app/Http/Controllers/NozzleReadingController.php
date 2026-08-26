@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreNozzleReadingRequest;
+use App\Http\Resources\NozzleReadingResource;
 use App\Models\NozzleReading;
 use App\Services\NozzleReadingService;
 
@@ -14,16 +15,16 @@ class NozzleReadingController extends Controller
 
     public function index()
     {
-        return NozzleReading::all();
+        return NozzleReadingResource::collection(NozzleReading::with(['nozzle.tank', 'user'])->get());
     }
 
     public function show(NozzleReading $nozzleReading)
     {
-        return $nozzleReading;
+        return new NozzleReadingResource($nozzleReading->load(['nozzle.tank', 'user']));
     }
 
     public function store(StoreNozzleReadingRequest $request)
     {
-        return $this->service->create($request->validated());
+        return new NozzleReadingResource($this->service->recordReading($request->validated(), auth()->id()));
     }
 }

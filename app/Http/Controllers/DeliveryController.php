@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreDeliveryRequest;
+use App\Http\Resources\DeliveryResource;
 use App\Models\Delivery;
 use App\Services\DeliveryService;
 
@@ -14,16 +15,16 @@ class DeliveryController extends Controller
 
     public function index()
     {
-        return Delivery::with(['purchaseOrder', 'tank'])->get();
+        return DeliveryResource::collection(Delivery::with(['purchaseOrder.account', 'tank.fuelType', 'stockTransaction'])->get());
     }
 
     public function show(Delivery $delivery)
     {
-        return $delivery->load(['purchaseOrder', 'tank']);
+        return new DeliveryResource($delivery->load(['purchaseOrder.account', 'tank.fuelType', 'stockTransaction']));
     }
 
     public function store(StoreDeliveryRequest $request)
     {
-        return $this->service->create($request->validated());
+        return new DeliveryResource($this->service->receiveDelivery($request->validated(), auth()->id()));
     }
 }

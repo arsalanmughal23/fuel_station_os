@@ -11,6 +11,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/auth/logout', [App\Http\Controllers\AuthController::class, 'logout']);
+        Route::get('/auth/user', [App\Http\Controllers\AuthController::class, 'user']);
 
         Route::apiResources([
             'fuel-types'      => App\Http\Controllers\FuelTypeController::class,

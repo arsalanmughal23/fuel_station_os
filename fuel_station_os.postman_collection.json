@@ -2,45 +2,109 @@
   "info": {
     "name": "Fuel Station OS API",
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
-    "description": "Postman collection for Fuel Station OS backend API. Use {{baseUrl}} to point at your local Laravel API.",
+    "description": "Complete Postman collection for Fuel Station OS backend API. All endpoints with correct query parameters, headers, bodies, and examples. Use {{baseUrl}} to point at your local Laravel API (e.g., {{baseUrl}}/api/health).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost"
+      "value": "http://localhost:8080",
+      "type": "string",
+      "description": "Base URL for the API (Laravel default: http://localhost:8080)"
     },
     {
       "key": "authToken",
-      "value": ""
+      "value": "",
+      "type": "string",
+      "description": "Sanctum auth token - set after login"
     },
     {
       "key": "id",
-      "value": "1"
+      "value": "1",
+      "type": "string",
+      "description": "Default ID for show/update/delete operations"
+    },
+    {
+      "key": "fuelTypeId",
+      "value": "1",
+      "type": "string",
+      "description": "Fuel type ID for related operations"
+    },
+    {
+      "key": "tankId",
+      "value": "1",
+      "type": "string",
+      "description": "Tank ID for related operations"
+    },
+    {
+      "key": "nozzleId",
+      "value": "1",
+      "type": "string",
+      "description": "Nozzle ID for related operations"
+    },
+    {
+      "key": "productId",
+      "value": "1",
+      "type": "string",
+      "description": "Product ID for related operations"
+    },
+    {
+      "key": "accountId",
+      "value": "1",
+      "type": "string",
+      "description": "Account ID for related operations"
+    },
+    {
+      "key": "purchaseOrderId",
+      "value": "1",
+      "type": "string",
+      "description": "Purchase Order ID for related operations"
+    },
+    {
+      "key": "saleId",
+      "value": "1",
+      "type": "string",
+      "description": "Sale ID for related operations"
     }
   ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
   "item": [
     {
       "name": "Health",
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Accept",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/health",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "health"
-          ]
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            }
+          },
+          "response": []
         }
-      }
+      ]
     },
     {
       "name": "Authentication",
@@ -61,7 +125,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password\"\n}"
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/auth/login",
@@ -75,7 +144,23 @@
                 "login"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login successful', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('token');",
+                  "  pm.collectionVariables.set('authToken', json.token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Logout",
@@ -105,6 +190,34 @@
                 "v1",
                 "auth",
                 "logout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Authenticated User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/user",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "user"
               ]
             }
           }
@@ -161,7 +274,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Diesel\",\n  \"current_price\": 135.5\n}"
+              "raw": "{\n  \"title\": \"Diesel\",\n  \"current_price\": 1.45\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/fuel-types",
@@ -191,7 +309,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/fuel-types/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/fuel-types/{{fuelTypeId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -199,7 +317,7 @@
                 "api",
                 "v1",
                 "fuel-types",
-                "{{id}}"
+                "{{fuelTypeId}}"
               ]
             }
           }
@@ -224,10 +342,15 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Diesel Plus\",\n  \"current_price\": 137.0\n}"
+              "raw": "{\n  \"title\": \"Diesel Premium\",\n  \"current_price\": 1.55\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/fuel-types/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/fuel-types/{{fuelTypeId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -235,7 +358,7 @@
                 "api",
                 "v1",
                 "fuel-types",
-                "{{id}}"
+                "{{fuelTypeId}}"
               ]
             }
           }
@@ -255,7 +378,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/fuel-types/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/fuel-types/{{fuelTypeId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -263,7 +386,7 @@
                 "api",
                 "v1",
                 "fuel-types",
-                "{{id}}"
+                "{{fuelTypeId}}"
               ]
             }
           }
@@ -320,7 +443,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fuel_type_id\": 1,\n  \"name\": \"Tank A\",\n  \"capacity_liters\": 10000\n}"
+              "raw": "{\n  \"fuel_type_id\": 1,\n  \"name\": \"Tank A1\",\n  \"capacity_liters\": 50000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/tanks",
@@ -350,7 +478,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/tanks/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/tanks/{{tankId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -358,7 +486,7 @@
                 "api",
                 "v1",
                 "tanks",
-                "{{id}}"
+                "{{tankId}}"
               ]
             }
           }
@@ -383,10 +511,15 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Tank A Updated\",\n  \"capacity_liters\": 12000\n}"
+              "raw": "{\n  \"fuel_type_id\": 1,\n  \"name\": \"Tank A1 Updated\",\n  \"capacity_liters\": 55000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/tanks/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/tanks/{{tankId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -394,7 +527,7 @@
                 "api",
                 "v1",
                 "tanks",
-                "{{id}}"
+                "{{tankId}}"
               ]
             }
           }
@@ -414,7 +547,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/tanks/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/tanks/{{tankId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -422,7 +555,7 @@
                 "api",
                 "v1",
                 "tanks",
-                "{{id}}"
+                "{{tankId}}"
               ]
             }
           }
@@ -479,7 +612,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tank_id\": 1,\n  \"name\": \"Nozzle 1\",\n  \"position\": \"Pump 1\"\n}"
+              "raw": "{\n  \"tank_id\": 1,\n  \"name\": \"Nozzle 1\",\n  \"position\": \"Left\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/nozzles",
@@ -509,7 +647,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/nozzles/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/nozzles/{{nozzleId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -517,7 +655,7 @@
                 "api",
                 "v1",
                 "nozzles",
-                "{{id}}"
+                "{{nozzleId}}"
               ]
             }
           }
@@ -542,10 +680,15 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Nozzle 1 Updated\",\n  \"position\": \"Pump 2\"\n}"
+              "raw": "{\n  \"tank_id\": 1,\n  \"name\": \"Nozzle 1 Updated\",\n  \"position\": \"Right\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/nozzles/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/nozzles/{{nozzleId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -553,7 +696,7 @@
                 "api",
                 "v1",
                 "nozzles",
-                "{{id}}"
+                "{{nozzleId}}"
               ]
             }
           }
@@ -573,7 +716,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/nozzles/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/nozzles/{{nozzleId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -581,7 +724,7 @@
                 "api",
                 "v1",
                 "nozzles",
-                "{{id}}"
+                "{{nozzleId}}"
               ]
             }
           }
@@ -638,7 +781,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Premium Oil\",\n  \"category\": \"Lubricant\",\n  \"unit\": \"ltr\",\n  \"unit_price\": 12.5\n}"
+              "raw": "{\n  \"title\": \"Engine Oil 5W-30\",\n  \"category\": \"Lubricants\",\n  \"unit\": \"liters\",\n  \"unit_price\": 25.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/products",
@@ -668,7 +816,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/products/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/products/{{productId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -676,7 +824,7 @@
                 "api",
                 "v1",
                 "products",
-                "{{id}}"
+                "{{productId}}"
               ]
             }
           }
@@ -701,10 +849,15 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"category\": \"Engine Oil\",\n  \"unit_price\": 13.0\n}"
+              "raw": "{\n  \"title\": \"Engine Oil 5W-30 Premium\",\n  \"category\": \"Lubricants\",\n  \"unit\": \"liters\",\n  \"unit_price\": 28.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/products/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/products/{{productId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -712,7 +865,7 @@
                 "api",
                 "v1",
                 "products",
-                "{{id}}"
+                "{{productId}}"
               ]
             }
           }
@@ -732,7 +885,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/products/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/products/{{productId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -740,7 +893,7 @@
                 "api",
                 "v1",
                 "products",
-                "{{id}}"
+                "{{productId}}"
               ]
             }
           }
@@ -797,7 +950,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"account_type\": \"customer\",\n  \"user_id\": 1,\n  \"name\": \"Station Account\",\n  \"contact\": \"+1234567890\",\n  \"opening_balance\": 0\n}"
+              "raw": "{\n  \"account_type\": \"customer\",\n  \"user_id\": 2,\n  \"name\": \"John Doe\",\n  \"contact\": \"+1-555-0123\",\n  \"opening_balance\": 1000.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts",
@@ -827,7 +985,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/accounts/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -835,7 +993,7 @@
                 "api",
                 "v1",
                 "accounts",
-                "{{id}}"
+                "{{accountId}}"
               ]
             }
           }
@@ -860,10 +1018,15 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated Account\",\n  \"contact\": \"+9876543210\"\n}"
+              "raw": "{\n  \"account_type\": \"customer\",\n  \"user_id\": 2,\n  \"name\": \"John Doe Updated\",\n  \"contact\": \"+1-555-0199\",\n  \"opening_balance\": 1000.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/accounts/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -871,7 +1034,7 @@
                 "api",
                 "v1",
                 "accounts",
-                "{{id}}"
+                "{{accountId}}"
               ]
             }
           }
@@ -891,7 +1054,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/accounts/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -899,7 +1062,7 @@
                 "api",
                 "v1",
                 "accounts",
-                "{{id}}"
+                "{{accountId}}"
               ]
             }
           }
@@ -956,7 +1119,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"account_id\": 1,\n  \"fuel_type_id\": 1,\n  \"quantity\": 5000,\n  \"unit_price\": 110.0,\n  \"ordered_at\": \"2026-08-09T10:00:00Z\",\n  \"status\": \"pending\"\n}"
+              "raw": "{\n  \"account_id\": 1,\n  \"fuel_type_id\": 1,\n  \"quantity\": 5000,\n  \"unit_price\": 1.30,\n  \"ordered_at\": \"2026-08-25\",\n  \"status\": \"pending\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/purchase-orders",
@@ -986,7 +1154,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/purchase-orders/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/purchase-orders/{{purchaseOrderId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -994,7 +1162,7 @@
                 "api",
                 "v1",
                 "purchase-orders",
-                "{{id}}"
+                "{{purchaseOrderId}}"
               ]
             }
           }
@@ -1019,10 +1187,15 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"completed\"\n}"
+              "raw": "{\n  \"account_id\": 1,\n  \"fuel_type_id\": 1,\n  \"quantity\": 6000,\n  \"unit_price\": 1.35,\n  \"ordered_at\": \"2026-08-25\",\n  \"status\": \"ordered\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/purchase-orders/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/purchase-orders/{{purchaseOrderId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1030,7 +1203,7 @@
                 "api",
                 "v1",
                 "purchase-orders",
-                "{{id}}"
+                "{{purchaseOrderId}}"
               ]
             }
           }
@@ -1050,7 +1223,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/purchase-orders/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/purchase-orders/{{purchaseOrderId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1058,7 +1231,7 @@
                 "api",
                 "v1",
                 "purchase-orders",
-                "{{id}}"
+                "{{purchaseOrderId}}"
               ]
             }
           }
@@ -1115,7 +1288,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"user_id\": 1,\n  \"account_id\": null,\n  \"total_amount\": 5500.0,\n  \"paid_amount\": 5500.0,\n  \"change_amount\": 0.0,\n  \"payment_status\": \"paid\",\n  \"sale_date\": \"2026-08-09T10:30:00Z\"\n}"
+              "raw": "{\n  \"user_id\": 1,\n  \"account_id\": 1,\n  \"total_amount\": 150.00,\n  \"paid_amount\": 150.00,\n  \"change_amount\": 0.00,\n  \"payment_status\": \"paid\",\n  \"sale_date\": \"2026-08-25\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/sales",
@@ -1145,7 +1323,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/sales/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/sales/{{saleId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1153,7 +1331,7 @@
                 "api",
                 "v1",
                 "sales",
-                "{{id}}"
+                "{{saleId}}"
               ]
             }
           }
@@ -1178,10 +1356,15 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"payment_status\": \"pending\"\n}"
+              "raw": "{\n  \"user_id\": 1,\n  \"account_id\": 1,\n  \"total_amount\": 175.00,\n  \"paid_amount\": 175.00,\n  \"change_amount\": 0.00,\n  \"payment_status\": \"paid\",\n  \"sale_date\": \"2026-08-25\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/sales/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/sales/{{saleId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1189,7 +1372,7 @@
                 "api",
                 "v1",
                 "sales",
-                "{{id}}"
+                "{{saleId}}"
               ]
             }
           }
@@ -1209,7 +1392,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/sales/{{id}}",
+              "raw": "{{baseUrl}}/api/v1/sales/{{saleId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1217,7 +1400,7 @@
                 "api",
                 "v1",
                 "sales",
-                "{{id}}"
+                "{{saleId}}"
               ]
             }
           }
@@ -1225,7 +1408,7 @@
       ]
     },
     {
-      "name": "Operations",
+      "name": "Operations (POST Only)",
       "item": [
         {
           "name": "Create Delivery",
@@ -1247,7 +1430,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"purchase_order_id\": 1,\n  \"tank_id\": 1,\n  \"delivered_at\": \"2026-08-09T12:00:00Z\",\n  \"quantity\": 5000\n}"
+              "raw": "{\n  \"purchase_order_id\": 1,\n  \"tank_id\": 1,\n  \"delivered_at\": \"2026-08-25\",\n  \"quantity\": 5000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/deliveries",
@@ -1282,7 +1470,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nozzle_id\": 1,\n  \"user_id\": 1,\n  \"opening_reading\": 1000,\n  \"closing_reading\": 1100,\n  \"liters_sold\": 100,\n  \"price_per_liter\": 150.0,\n  \"amount\": 15000.0,\n  \"recorded_at\": \"2026-08-09T12:30:00Z\"\n}"
+              "raw": "{\n  \"nozzle_id\": 1,\n  \"user_id\": 1,\n  \"opening_reading\": 10000,\n  \"closing_reading\": 10500,\n  \"liters_sold\": 500,\n  \"price_per_liter\": 1.45,\n  \"amount\": 725.00,\n  \"recorded_at\": \"2026-08-25T10:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/nozzle-readings",
@@ -1317,7 +1510,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tank_id\": 1,\n  \"user_id\": 1,\n  \"inside_reading\": 3200,\n  \"outside_reading\": 3150,\n  \"recorded_at\": \"2026-08-09T12:30:00Z\"\n}"
+              "raw": "{\n  \"tank_id\": 1,\n  \"user_id\": 1,\n  \"inside_reading\": 150.5,\n  \"outside_reading\": 149.8,\n  \"recorded_at\": \"2026-08-25T08:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/deep-readings",
@@ -1352,7 +1550,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"stockable_type\": \"App\\\\Models\\\\Product\",\n  \"stockable_id\": 1,\n  \"unit\": \"pcs\",\n  \"user_id\": 1,\n  \"deep_reading_id\": null,\n  \"quantity\": 10,\n  \"adjustment_type\": \"increase\",\n  \"reason\": \"inventory correction\",\n  \"adjusted_at\": \"2026-08-09T13:00:00Z\"\n}"
+              "raw": "{\n  \"stockable_type\": \"App\\\\Models\\\\Tank\",\n  \"stockable_id\": 1,\n  \"unit\": \"liters\",\n  \"user_id\": 1,\n  \"deep_reading_id\": null,\n  \"quantity\": 100,\n  \"adjustment_type\": \"increase\",\n  \"reason\": \"inventory correction after deep reading\",\n  \"adjusted_at\": \"2026-08-25T10:30:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/stock-adjustments",
