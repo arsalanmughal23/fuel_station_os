@@ -3,6 +3,7 @@
 export DSH_PROJECT_NAME="fuel_station_os"        # e.g., my_project
 export DSH_PROJECT_TYPE="desktop+web hybrid"        # e.g., desktop+web hybrid
 export DSH_TEAM_NAME="production_team"              # e.g., production_team
+export DSH_CEO_NAME="Arsalan"
 export DSH_PROJECT_ROOT="$(pwd)"
 export DSH_MEMORY_LAYER="project"
 export DSH_PROJECT_ANCHOR="true"

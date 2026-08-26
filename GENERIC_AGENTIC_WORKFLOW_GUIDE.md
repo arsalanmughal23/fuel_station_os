@@ -126,6 +126,7 @@ cat > .dshrc << 'EOF'
 export DSH_PROJECT_NAME="[PROJECT_NAME]"        # e.g., my_project
 export DSH_PROJECT_TYPE="[PROJECT_TYPE]"        # e.g., desktop+web hybrid
 export DSH_TEAM_NAME="[TEAM_NAME]"              # e.g., production_team
+export DSH_CEO_NAME="[CEO_NAME]"                # e.g., Admin, Arsalan, etc
 export DSH_PROJECT_ROOT="$(pwd)"
 export DSH_MEMORY_LAYER="project"
 export DSH_PROJECT_ANCHOR="true"
@@ -263,7 +264,7 @@ memory_save --content "Project: $DSH_PROJECT_NAME - $DSH_PROJECT_TYPE with $DSH_
 memory_save --content "Tech stack: $DSH_TECH_STACK. Scope: $DSH_PROJECT_SCOPE" --namespace project --keywords "$DSH_PROJECT_NAME,tech-stack,architecture" --status suggested
 
 # Save project type and team
-memory_save --content "Project type: $DSH_PROJECT_TYPE. Team: $DSH_TEAM_NAME. CEO: $(whoami)" --namespace project --keywords "$DSH_PROJECT_NAME,team,project-type" --status suggested
+memory_save --content "Project type: $DSH_PROJECT_TYPE. Team: $DSH_TEAM_NAME. CEO: $DSH_CEO_NAME" --namespace project --keywords "$DSH_PROJECT_NAME,team,project-type" --status suggested
 ```
 
 > **Note:** `$DSH_KEY_FEATURES`, `$DSH_TECH_STACK`, `$DSH_PROJECT_SCOPE` are shell variables you define locally, or replace with actual values directly in the command.
@@ -272,9 +273,19 @@ memory_save --content "Project type: $DSH_PROJECT_TYPE. Team: $DSH_TEAM_NAME. CE
 
 ### Step 2: Initialize Agent Team (In-Chat)
 
+> **🎯 Team Naming Strategy:** Choose the model that fits your organization:
+> 
+> | Model | Command | Best For |
+> |-------|---------|----------|
+> | **Team-Scoped (Recommended)** | `agent_teams_create --name "$DSH_TEAM_NAME" --description "Persistent team: $DSH_TEAM_NAME"` | Stable team working across multiple projects. Members, conventions, and memory persist. |
+> | **Project-Scoped** | `agent_teams_create --name "${DSH_PROJECT_NAME}_team" --description "Dedicated team for $DSH_PROJECT_NAME"` | One-off project with isolated team. Team lives/dies with project. |
+> | **Goal-Scoped** | `agent_teams_create --name "${DSH_PROJECT_NAME}_${EPIC_NAME}" --description "Team for $EPIC_NAME epic"` | Temporary team for a specific epic/objective. |
+> 
+> **Your `.dshrc` defines `DSH_TEAM_NAME`** — use the **Team-Scoped** model for persistent teams.
+
 ```bash
-# Create team (you are captain/CEO)
-agent_teams_create --name "$DSH_PROJECT_NAME_team" --description "Multi-agent team for $DSH_PROJECT_NAME development"
+# Create team (you are captain/CEO) — USE YOUR DSH_TEAM_NAME
+agent_teams_create --name "$DSH_TEAM_NAME" --description "Persistent team: $DSH_TEAM_NAME"
 
 # Add standard team members
 agent_teams_add_member --name "pm" --role "Project Manager" --description "Creates/maintains Tasks.md, manages dependencies, tracks progress"
@@ -363,7 +374,7 @@ dsh-project project_b    # Loads project_b memory (project_a memory hidden)
 - [ ] Run `memory_save` for project identity (soul layer)
 - [ ] Run `memory_save` for tech stack (project layer)
 - [ ] Run `memory_save` for project type/team
-- [ ] Run `agent_teams_create` to create team
+- [ ] Run `agent_teams_create --name "$DSH_TEAM_NAME"` to create persistent team
 - [ ] Run `agent_teams_add_member` for each role
 - [ ] Load documentation files with `memory_save` (if exist)
 - [ ] Run `create_flow` for workflow
@@ -384,7 +395,8 @@ dsh-project project_b    # Loads project_b memory (project_a memory hidden)
 | **Confirm Memory** | `memory_confirm --id "memory-id"` | Approve suggested memory (human only) |
 | **Update Memory** | `memory_update --id "memory-id" --content "new text"` | Update existing memory |
 | **Delete Memory** | `memory_forget --id "memory-id"` | Delete a memory |
-| **Create Team** | `agent_teams_create --name "team-name" --description "purpose"` | Create agent team |
+| **Create Team (Team-Scoped)** | `agent_teams_create --name "$DSH_TEAM_NAME" --description "Persistent team"` | Create persistent agent team (uses .dshrc team name) |
+| **Create Team (Project-Scoped)** | `agent_teams_create --name "${DSH_PROJECT_NAME}_team" --description "Project team"` | Create project-isolated team |
 | **Add Member** | `agent_teams_add_member --name "member" --role "role" --description "desc"` | Add agent to team |
 | **Create Task** | `agent_teams_create_task --subject "title" --description "details" --assignee "member"` | Create task in team |
 | **Check Status** | `agent_teams_status` | Show team and task status |

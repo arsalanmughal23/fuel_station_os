@@ -1,0 +1,64 @@
+{
+  "unit": {
+    "name": "memory_project_memory_project_ks2gzy",
+    "version": 1
+  },
+  "global": null,
+  "tables": {
+    "blocks": {
+      "0799cc96-dfd7-4fbf-a87d-92a78e1a5f03": {
+        "namespace": "project",
+        "status": "approved",
+        "injected": false,
+        "content": "Project: FuelStationOS - Single-station desktop fuel management system with append-only ledger architecture. Tech stack: Laravel 12 (PHP 8.4+), Nuxt 3 (Vue 3), SQLite, Docker + Tauri desktop wrapper. Core features: Fuel setup (tanks, nozzles, calibrations), Operations (nozzle/deep readings), Sales & POS, Shop Inventory, Procurement (purchase orders, deliveries), Accounts (distributor/customer/employee/owner), Reporting & Dashboard. 21-table schema with polymorphic relationships and XOR constraints enforced via SQLite triggers.",
+        "keywords": [
+          "fuelstationos",
+          "identity",
+          "project",
+          "laravel",
+          "nuxt",
+          "sqlite",
+          "append-only-ledger",
+          "fuel-management"
+        ],
+        "createdAt": 1787656439163,
+        "updatedAt": 1787656562730
+      },
+      "6b71e45f-5596-4824-a87b-68f1d637ecff": {
+        "namespace": "project",
+        "status": "approved",
+        "injected": false,
+        "content": "Tech stack: Laravel 12 (PHP 8.4+), Nuxt 3 (Vue 3), SQLite (embedded), Docker + Docker Compose, NativePHP + Tauri desktop wrapper, Laravel Sanctum auth, spatie/laravel-permission RBAC, Laravel Queue (database driver). Scope: Single-station desktop fuel management system running offline via Dockerized backend and Tauri desktop wrapper. 21-table schema with append-only stock/payment ledgers, polymorphic relationships (stockable: Tank/Product, priceable: FuelType/Product), XOR constraints enforced via SQLite triggers.",
+        "keywords": [
+          "fuelstationos",
+          "tech-stack",
+          "architecture",
+          "laravel",
+          "nuxt",
+          "sqlite",
+          "docker",
+          "tauri",
+          "append-only-ledger"
+        ],
+        "createdAt": 1787656780164,
+        "updatedAt": 1787656858065
+      },
+      "2af427c5-6666-459c-bdb9-4788c4472b4e": {
+        "namespace": "project",
+        "status": "approved",
+        "injected": false,
+        "content": "Project type: desktop+web hybrid. Team: production_team. CEO: Arsalan.",
+        "keywords": [
+          "fuel_station_os",
+          "team",
+          "project-type",
+          "production_team",
+          "arsalan",
+          "desktop+web-hybrid"
+        ],
+        "createdAt": 1787659430993,
+        "updatedAt": 1787659750190
+      }
+    }
+  }
+}
