@@ -20,4 +20,19 @@ class NozzleFactory extends Factory
             'name' => fake()->word() . ' Nozzle',
         ];
     }
+
+    // Generic custom methods
+    public function withName($name)
+    {
+        return $this->state([
+            'name' => $name,
+        ]);
+    }
+
+    public function forTank(Tank $tank)
+    {
+        return $this->state([
+            'tank_id' => $tank->id,
+        ]);
+    }
 }

@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
         ]);
 
-        // Create an owner user
+        // Create users
         User::factory()->create([
             'name' => 'Owner',
             'email' => 'owner@example.com',
@@ -32,6 +32,10 @@ class DatabaseSeeder extends Seeder
             'name' => 'Admin',
             'email' => 'admin@example.com',
             'username' => 'admin',
+        ]);
+
+        $this->call([
+            FuelTypeTankNozzleSeeder::class,
         ]);
     }
 }
