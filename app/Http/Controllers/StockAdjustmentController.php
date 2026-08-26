@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreStockAdjustmentRequest;
+use App\Http\Resources\StockAdjustmentResource;
 use App\Models\StockAdjustment;
 use App\Services\StockAdjustmentService;
 
@@ -14,16 +15,16 @@ class StockAdjustmentController extends Controller
 
     public function index()
     {
-        return StockAdjustment::all();
+        return StockAdjustmentResource::collection(StockAdjustment::with(['stockable', 'user', 'deepReading.tank', 'stockTransaction'])->get());
     }
 
     public function show(StockAdjustment $stockAdjustment)
     {
-        return $stockAdjustment;
+        return new StockAdjustmentResource($stockAdjustment->load(['stockable', 'user', 'deepReading.tank', 'stockTransaction']));
     }
 
     public function store(StoreStockAdjustmentRequest $request)
     {
-        return $this->service->create($request->validated());
+        return new StockAdjustmentResource($this->service->recordAdjustment($request->validated(), auth()->id()));
     }
 }

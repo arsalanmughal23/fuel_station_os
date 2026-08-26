@@ -19,15 +19,21 @@ class StockTransactionService
         array $sourceFK = [],
         ?string $remarks = null
     ): StockTransaction {
+        // Validate XOR constraint: exactly one source FK must be set
+        $this->validateXorConstraint($sourceFK);
+
         return DB::transaction(function () use ($stockable, $quantity, $unit, $userId, $sourceFK, $remarks) {
             // Calculate balance after this transaction
-            $lastBalance = StockTransaction::where('stockable_type', get_class($stockable))
+            // Use short morph key from morph map (Tank, Product, FuelType)
+            $stockableType = $this->getMorphKey($stockable);
+            
+            $lastBalance = StockTransaction::where('stockable_type', $stockableType)
                 ->where('stockable_id', $stockable->id)
                 ->latest()
                 ->value('balance_after') ?? 0;
 
             return StockTransaction::create(array_merge([
-                'stockable_type' => get_class($stockable),
+                'stockable_type' => $stockableType,
                 'stockable_id'   => $stockable->id,
                 'quantity'       => $quantity,
                 'unit'           => $unit,
@@ -36,6 +42,45 @@ class StockTransactionService
                 'remarks'        => $remarks,
             ], $sourceFK));
         });
+    }
+
+    /**
+     * Get the short morph key for a model (Tank, Product, FuelType)
+     */
+    private function getMorphKey(Model $model): string
+    {
+        $class = get_class($model);
+        $morphMap = [
+            \App\Models\Tank::class => 'Tank',
+            \App\Models\Product::class => 'Product',
+            \App\Models\FuelType::class => 'FuelType',
+        ];
+        
+        return $morphMap[$class] ?? $class;
+    }
+
+    /**
+     * Validate XOR constraint: exactly one of the source FKs must be set
+     */
+    private function validateXorConstraint(array $sourceFK): void
+    {
+        $allowedKeys = [
+            'delivery_id',
+            'nozzle_reading_id',
+            'sale_item_id',
+            'stock_adjustment_id',
+            'reversed_transaction_id',
+        ];
+
+        $setKeys = array_intersect(array_keys($sourceFK), $allowedKeys);
+        
+        if (count($setKeys) !== 1) {
+            throw new \InvalidArgumentException(
+                'StockTransaction requires exactly one source FK. ' .
+                'Provided: ' . implode(', ', $setKeys) . '. ' .
+                'Allowed: ' . implode(', ', $allowedKeys)
+            );
+        }
     }
 
     /**

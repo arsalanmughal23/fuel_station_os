@@ -38,9 +38,19 @@ class NozzleReading extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function stockTransactions(): HasMany
+    {
+        return $this->hasMany(StockTransaction::class);
+    }
+
     public function stockTransaction(): HasOne
     {
         return $this->hasOne(StockTransaction::class);
+    }
+
+    public function paymentTransactions(): HasMany
+    {
+        return $this->hasMany(PaymentTransaction::class);
     }
 
     public function paymentTransaction(): HasOne

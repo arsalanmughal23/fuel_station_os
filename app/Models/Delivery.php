@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Delivery extends Model
@@ -45,5 +46,10 @@ class Delivery extends Model
     public function stockTransaction(): HasOne
     {
         return $this->hasOne(StockTransaction::class);
+    }
+
+    public function stockTransactions(): HasMany
+    {
+        return $this->hasMany(StockTransaction::class);
     }
 }

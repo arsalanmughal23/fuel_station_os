@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\AdjustmentType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
@@ -46,5 +47,10 @@ class StockAdjustment extends Model
     public function stockTransaction(): HasOne
     {
         return $this->hasOne(StockTransaction::class);
+    }
+
+    public function stockTransactions(): HasMany
+    {
+        return $this->hasMany(StockTransaction::class);
     }
 }

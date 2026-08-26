@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string("unit");
             $table->decimal("quantity", 12, 3);
             $table->decimal("unit_price", 12, 4);
-            $table->decimal("total_price", 12, 2);
+            $table->decimal("amount", 12, 2); // ERD v4: amount (not total_price)
             $table->timestamps();
         });
 

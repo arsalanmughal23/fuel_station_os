@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StorePaymentTransactionRequest;
+use App\Http\Resources\PaymentTransactionResource;
 use App\Models\PaymentTransaction;
 use App\Services\PaymentTransactionService;
 
@@ -14,16 +14,11 @@ class PaymentTransactionController extends Controller
 
     public function index()
     {
-        return PaymentTransaction::all();
+        return PaymentTransactionResource::collection(PaymentTransaction::with(['account', 'user', 'sale', 'purchaseOrder', 'reversedTransaction'])->get());
     }
 
     public function show(PaymentTransaction $paymentTransaction)
     {
-        return $paymentTransaction;
-    }
-
-    public function store(StorePaymentTransactionRequest $request)
-    {
-        return $this->service->create($request->validated());
+        return new PaymentTransactionResource($paymentTransaction->load(['account', 'user', 'sale', 'purchaseOrder', 'reversedTransaction']));
     }
 }

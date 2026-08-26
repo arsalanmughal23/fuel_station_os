@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePurchaseOrderRequest;
+use App\Http\Resources\PurchaseOrderResource;
 use App\Models\PurchaseOrder;
 use App\Services\PurchaseOrderService;
 
@@ -14,16 +15,16 @@ class PurchaseOrderController extends Controller
 
     public function index()
     {
-        return PurchaseOrder::with(['account', 'fuelType'])->get();
+        return PurchaseOrderResource::collection(PurchaseOrder::with(['account', 'fuelType', 'deliveries', 'paymentTransactions'])->get());
     }
 
     public function show(PurchaseOrder $purchaseOrder)
     {
-        return $purchaseOrder->load(['account', 'fuelType']);
+        return new PurchaseOrderResource($purchaseOrder->load(['account', 'fuelType', 'deliveries', 'paymentTransactions']));
     }
 
     public function store(StorePurchaseOrderRequest $request)
     {
-        return $this->service->create($request->validated());
+        return new PurchaseOrderResource($this->service->createPurchaseOrder($request->validated(), auth()->id()));
     }
 }

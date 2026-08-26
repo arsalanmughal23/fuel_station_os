@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreDeepReadingRequest;
+use App\Http\Resources\DeepReadingResource;
 use App\Models\DeepReading;
 use App\Services\DeepReadingService;
 
@@ -14,16 +15,16 @@ class DeepReadingController extends Controller
 
     public function index()
     {
-        return DeepReading::with(['tank', 'user'])->get();
+        return DeepReadingResource::collection(DeepReading::with(['tank', 'user', 'stockAdjustments'])->get());
     }
 
     public function show(DeepReading $deepReading)
     {
-        return $deepReading->load(['tank', 'user']);
+        return new DeepReadingResource($deepReading->load(['tank', 'user', 'stockAdjustments']));
     }
 
     public function store(StoreDeepReadingRequest $request)
     {
-        return $this->service->create($request->validated());
+        return new DeepReadingResource($this->service->recordReading($request->validated(), auth()->id()));
     }
 }
