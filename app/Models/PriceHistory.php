@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\FuelType;
+use App\Models\Product;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class PriceHistory extends Model
 {
+    protected $table = 'price_history';
+
     protected $fillable = [
         'priceable_type',
         'priceable_id',
@@ -18,15 +22,32 @@ class PriceHistory extends Model
         'changed_at',
     ];
 
-    protected function casts(): array
+    protected $casts = [
+        'old_price' => 'decimal:4',
+        'new_price' => 'decimal:4',
+        'changed_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    protected static function booted(): void
     {
-        return [
-            'old_price' => 'decimal:2',
-            'new_price' => 'decimal:2',
-            'changed_at' => 'datetime',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
-        ];
+        static::created(function (self $history) {
+            $priceable = $history->priceable;
+
+            if (! $priceable) {
+                return;
+            }
+
+            if ($priceable instanceof FuelType) {
+                $priceable->forceFill(['current_price' => $history->new_price])->saveQuietly();
+                return;
+            }
+
+            if ($priceable instanceof Product) {
+                $priceable->forceFill(['unit_price' => $history->new_price])->saveQuietly();
+            }
+        });
     }
 
     public function priceable(): MorphTo

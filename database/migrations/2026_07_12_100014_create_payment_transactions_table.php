@@ -23,7 +23,7 @@ return new class extends Migration
             $table->foreignId('purchase_order_id')->nullable()->constrained()->restrictOnDelete();
             $table->foreignId('reversed_transaction_id')->nullable()->constrained('payment_transactions')->restrictOnDelete();
             $table->string('status');
-            
+
             // Add check constraints for enum fields
             if (Schema::getConnection()->getDriverName() !== 'sqlite') {
                 // For MySQL, PostgreSQL, etc.
@@ -34,6 +34,7 @@ return new class extends Migration
             }
             $table->string('remarks')->nullable();
             $table->dateTime('transacted_at');
+            $table->timestamps();
 
             $table->index(['account_id', 'transacted_at']);
         });
@@ -54,6 +55,26 @@ return new class extends Migration
                     SELECT RAISE(ABORT, \'payment_transactions is append-only\');
                 END
             ');
+
+            DB::statement('
+                CREATE TRIGGER payment_transactions_update_account_balance
+                AFTER INSERT ON payment_transactions
+                BEGIN
+                    UPDATE accounts
+                    SET current_balance = (
+                        SELECT COALESCE(opening_balance, 0) + COALESCE(SUM(
+                            CASE
+                                WHEN type = \'income\' THEN amount
+                                WHEN type = \'expense\' THEN -amount
+                                ELSE 0
+                            END
+                        ), 0)
+                        FROM payment_transactions
+                        WHERE account_id = NEW.account_id
+                    )
+                    WHERE id = NEW.account_id;
+                END
+            ');
         }
     }
 
@@ -65,6 +86,7 @@ return new class extends Migration
         if (Schema::getConnection()->getDriverName() === 'sqlite') {
             DB::statement('DROP TRIGGER IF EXISTS payment_transactions_prevent_update');
             DB::statement('DROP TRIGGER IF EXISTS payment_transactions_prevent_delete');
+            DB::statement('DROP TRIGGER IF EXISTS payment_transactions_update_account_balance');
         }
 
         Schema::dropIfExists('payment_transactions');

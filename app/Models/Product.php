@@ -6,12 +6,14 @@ use App\Enums\ScaleUnit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Support\Str;
 
 class Product extends Model
 {
+    use Concerns\HasSlug;
+
     /**
-     * current_stock is a persisted field that tracks inventory levels.
+     * current_stock is a derived persisted field that tracks inventory levels.
+     * It should not be mass-assigned directly.
      *
      * @var list<string>
      */
@@ -20,28 +22,19 @@ class Product extends Model
         'category',
         'unit',
         'unit_price',
+    ];
+
+    protected $guarded = [
         'current_stock',
     ];
 
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($product) {
-            $product->slug = Str::slug($product->title);
-        });
-    }
-
-    protected function casts(): array
-    {
-        return [
-            'unit' => ScaleUnit::class,
-            'unit_price' => 'decimal:10,4',
-            'current_stock' => 'decimal:10,2',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'unit' => ScaleUnit::class,
+        'unit_price' => 'decimal:10,4',
+        'current_stock' => 'decimal:10,2',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 
     public function saleItems(): HasMany
     {
@@ -63,13 +56,8 @@ class Product extends Model
         return $this->morphMany(PriceHistory::class, 'priceable');
     }
 
-    /**
-     * Get the current stock level.
-     *
-     * @return float
-     */
-    public function getCurrentStockAttribute()
+    public function getCurrentStockAttribute($value)
     {
-        return $this->current_stock;
+        return $value !== null ? $value : $this->stockTransactions()->sum('quantity');
     }
 }

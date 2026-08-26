@@ -1,0 +1,21 @@
+# 1. Remove the broken Launchpad PPA (skip it entirely, don't add it)
+sudo apt install -y software-properties-common
+sudo add-apt-repository --remove ppa:ondrej/php -y 2>/dev/null || true
+
+# 2. Add the sury.org keyring
+sudo apt install -y curl
+curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb
+sudo dpkg -i /tmp/debsuryorg-archive-keyring.deb
+
+# 3. Add the new repo source for PHP 8.4 on Resolute
+cat <<EOF | sudo tee /etc/apt/sources.list.d/sury-php.sources
+Types: deb
+URIs: https://packages.sury.org/php/
+Suites: resolute
+Components: main
+Signed-By: /usr/share/keyrings/debsuryorg-archive-keyring.gpg
+EOF
+
+# 4. Update and install
+sudo apt update
+sudo apt install -y php8.4-cli php8.4-sqlite3 php8.4-mbstring php8.4-xml php8.4-curl php8.4-zip php8.4-bcmath unzip

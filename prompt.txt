@@ -1,0 +1,22 @@
+Read the following files in order before doing anything else:
+1. AGENTS.md      — your workflow instructions
+2. PRD.md         — what we are building
+3. Architecture.md — tech stack, schema, ledger rules, code patterns
+4. Decisions.md   — hard architectural rules (DO NOT violate)
+5. Tasks.md       — progress tracker (your starting point)
+
+## Rules
+- Start from the first `[ ]` item under "Recommended Next Steps" in Tasks.md.
+- Do NOT redo any task marked `[x]`.
+- Before touching any file, read its current state first.
+- After completing each task, immediately update Tasks.md:
+    - Mark the completed item `[x]`
+    - Mark any newly started item `[/]`
+- If you discover a bug or new required step, add it to Tasks.md before fixing it.
+- Follow the append-only ledger rules in Architecture.md strictly — never UPDATE or DELETE ledger rows.
+- Follow all constraints in Decisions.md — no UUIDs, no shifts table, no pumps table, etc.
+- Write clean, self-documenting code. No over-explaining in comments or responses.
+
+## Where to Start
+Check "Recommended Next Steps" in Tasks.md. The first `[ ]` item is your task.
+Begin now.

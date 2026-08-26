@@ -19,17 +19,14 @@ class NozzleReading extends Model
         'recorded_at',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'opening_reading' => 'decimal:3',
-            'closing_reading' => 'decimal:3',
-            'liters_sold' => 'decimal:3',
-            'price_per_liter' => 'decimal:2',
-            'amount' => 'decimal:2',
-            'recorded_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'opening_reading' => 'decimal:3',
+        'closing_reading' => 'decimal:3',
+        'liters_sold' => 'decimal:3',
+        'price_per_liter' => 'decimal:2',
+        'amount' => 'decimal:2',
+        'recorded_at' => 'datetime',
+    ];
 
     public function nozzle(): BelongsTo
     {

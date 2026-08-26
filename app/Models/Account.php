@@ -24,15 +24,16 @@ class Account extends Model
         'opening_balance',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'account_type' => AccountType::class,
-            'opening_balance' => 'decimal:2',
-            'current_balance' => 'decimal:2',
-            'created_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'account_type' => AccountType::class,
+        'opening_balance' => 'decimal:2',
+        'current_balance' => 'decimal:2',
+        'created_at' => 'datetime',
+    ];
+
+    protected $guarded = [
+        'current_balance',
+    ];
 
     public function user(): BelongsTo
     {
@@ -47,5 +48,20 @@ class Account extends Model
     public function paymentTransactions(): HasMany
     {
         return $this->hasMany(PaymentTransaction::class);
+    }
+
+    public function getCurrentBalanceAttribute($value)
+    {
+        if ($value !== null) {
+            return $value;
+        }
+
+        $balance = $this->paymentTransactions()
+            ->selectRaw(
+                "COALESCE(SUM(CASE WHEN type = 'income' THEN amount WHEN type = 'expense' THEN -amount ELSE 0 END), 0) AS balance"
+            )
+            ->value('balance');
+
+        return $this->opening_balance + $balance;
     }
 }

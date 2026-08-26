@@ -30,30 +30,21 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
+# Copy composer files first for better layer caching
+COPY composer.json composer.lock ./
+
+# Install dependencies (will be cached if composer files don't change)
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+
 # Copy application files
 COPY . .
 
-# === BUILD-TIME SETUP (runs once during image build) ===
-RUN mkdir -p bootstrap/cache \
-    storage/framework/cache \
-    storage/framework/sessions \
-    storage/framework/views \
-    storage/logs \
-    storage/database \
-    /tmp/composer-cache \
-    /var/www/.config \
-    && chown -R www-data:www-data /var/www/html/bootstrap /var/www/html/storage /tmp/composer-cache /var/www/.config \
-    && chmod -R 775 /var/www/html/bootstrap /var/www/html/storage /tmp/composer-cache /var/www/.config
+RUN composer dump-autoload --optimize
 
-# Create empty cache files to prevent errors
-RUN echo '<?php return [];' > bootstrap/cache/packages.php && \
-    echo '<?php return [];' > bootstrap/cache/services.php && \
-    chown www-data:www-data bootstrap/cache/*.php && \
-    chmod 664 bootstrap/cache/*.php
+RUN mkdir -p /var/www/.config && chown -R www-data:www-data /var/www/.config
 
-# Copy entrypoint (runtime verification only)
-COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+# Copy entrypoint (runtime verification only) with executable permissions
+COPY --chmod=+x docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # Set environment variables
 ENV HOME=/var/www \

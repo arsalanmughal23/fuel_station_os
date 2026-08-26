@@ -42,19 +42,13 @@ help: ## Show this help message
 
 dev: ## Start development environment
 	@echo "${GREEN}🚀 Starting development environment...${RESET}"
-	@if [ ! -f .env ]; then \
-		echo "${YELLOW}📄 Creating .env from .env.example...${RESET}"; \
-		cp .env.example .env; \
-	fi
-	@mkdir -p bootstrap/cache storage/database
-	@touch storage/database/database.sqlite
-	@chmod 775 storage/database/database.sqlite 2>/dev/null || true
 	@docker compose up -d
 	@echo "${YELLOW}⏳ Waiting for containers to be ready...${RESET}"
 	@sleep 5
 	@$(MAKE) setup
 	@echo ""
 	@echo "${GREEN}🌐 Access your application:${RESET}"
+	@echo "  Backend: http://localhost:${APP_PORT}"
 	@echo "  Backend API: http://localhost:${APP_PORT}/api/health"
 	@echo "  Frontend: http://localhost:3000"
 	@echo ""
@@ -175,28 +169,25 @@ down: ## Stop all containers
 	docker compose down
 
 clean: ## Clean everything EXCEPT composer.lock
-	@echo "${YELLOW}🧹 Cleaning everything (keeping composer.lock & vendor)...${RESET}"
+	@echo "${YELLOW}🧹 Cleaning frontend/{.nuxt, .output} & compose down -v...${RESET}"
 	docker compose down -v
-	rm -rf bootstrap/cache/*.php
-	rm -f storage/database/database.sqlite
-	rm -f storage/database/.initialized
-	rm -rf frontend/.nuxt frontend/.output frontend/node_modules
-	@echo "${GREEN}✅ Clean complete! composer.lock preserved.${RESET}"
+	rm -rf frontend/.nuxt frontend/.output
+	@echo "${GREEN}✅ Clean complete!${RESET}"
 
 full-clean: ## Clean EVERYTHING including composer.lock
 	@echo "${RED}⚠️  WARNING: This will remove composer.lock and vendor!${RESET}"
 	@echo "${YELLOW}Are you sure? Type 'yes' to continue:${RESET}" && read answer && [ "$$answer" = "yes" ]
 	docker compose down -v
 	rm -rf bootstrap/cache/*.php
+	rm -rf vendor composer.lock
 	rm -f storage/database/database.sqlite
 	rm -f storage/database/.initialized
-	rm -rf frontend/.nuxt frontend/.output frontend/node_modules
-	rm -rf vendor composer.lock
+	rm -rf frontend/.nuxt frontend/.output frontend/node_modules frontend/.pnpm-store
 	@echo "${GREEN}✅ Full clean complete!${RESET}"
 
-rmi: ## Remove all matching images (fuel_station*)
-	@echo "${YELLOW}🗑️ Removing fuel_station* images...${RESET}"
-	@IMAGES=$$(docker images fuel_station* -q 2>/dev/null); \
+rmi: ## Remove all matching images (fuel_station_os-*)
+	@echo "${YELLOW}🗑️ Removing fuel_station_os-* images...${RESET}"
+	@IMAGES=$$(docker images fuel_station_os-* -q 2>/dev/null); \
 	if [ -n "$$IMAGES" ]; then \
 		docker rmi $$IMAGES; \
 		echo "${GREEN}✅ Images removed!${RESET}"; \
@@ -244,26 +235,26 @@ prod: ## Start production environment
 		cp .env.example .env.production; \
 		echo "${RED}⚠️ Please update .env.production with production values!${RESET}"; \
 	fi
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+	docker compose -f docker-compose.prod.yml up -d
 	@echo "${GREEN}✅ Production environment ready!${RESET}"
 
 prod-build: ## Build production images
 	@echo "${GREEN}🏗️ Building production images...${RESET}"
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache
+	docker compose -f docker-compose.prod.yml build --no-cache
 
 prod-down: ## Stop production environment
 	@echo "${YELLOW}🛑 Stopping production...${RESET}"
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+	docker compose -f docker-compose.prod.yml down
 
 prod-logs: ## View production logs
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
+	docker compose -f docker-compose.prod.yml logs -f
 
 prod-status: ## Show production container status
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+	docker compose -f docker-compose.prod.yml ps
 
 prod-clean: ## Clean production environment
 	@echo "${YELLOW}🧹 Cleaning production...${RESET}"
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml down -v
+	docker compose -f docker-compose.prod.yml down -v
 	@echo "${GREEN}✅ Production clean complete!${RESET}"
 
 # Health Check

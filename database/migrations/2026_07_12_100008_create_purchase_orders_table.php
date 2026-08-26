@@ -20,7 +20,7 @@ return new class extends Migration
             $table->decimal('total_amount', 12, 2);
             $table->string('invoice_number')->nullable();
             $table->string('status');
-            
+
             // Add check constraint for status
             if (Schema::getConnection()->getDriverName() !== 'sqlite') {
                 // For MySQL, PostgreSQL, etc.
