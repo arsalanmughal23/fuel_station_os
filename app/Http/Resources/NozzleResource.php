@@ -15,7 +15,9 @@ class NozzleResource extends JsonResource
             'tank' => new TankResource($this->whenLoaded('tank')),
             'name' => $this->name,
             'readings_count' => $this->whenLoaded('readings', fn() => $this->readings->count()),
-            'latest_reading' => new NozzleReadingResource($this->whenLoaded('readings', fn() => $this->readings->latest('recorded_at')->first())),
+            'latest_reading' => $this->whenLoaded('readings', fn() => $this->readings->isNotEmpty()
+                ? new NozzleReadingResource($this->readings->sortByDesc('recorded_at')->first())
+                : null),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
