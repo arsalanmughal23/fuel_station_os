@@ -15,13 +15,8 @@ class StoreNozzleReadingRequest extends FormRequest
     {
         return [
             'nozzle_id' => 'required|exists:nozzles,id',
-            'user_id' => 'required|exists:users,id',
-            'opening_reading' => 'required|numeric',
-            'closing_reading' => 'required|numeric',
-            'liters_sold' => 'required|numeric',
-            'price_per_liter' => 'required|numeric',
-            'amount' => 'required|numeric',
-            'recorded_at' => 'required|date',
+            'closing_reading' => 'required|numeric|min:0',
+            'recorded_at' => 'sometimes|date',
         ];
     }
 }
