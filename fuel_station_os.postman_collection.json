@@ -1470,7 +1470,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nozzle_id\": 1,\n  \"user_id\": 1,\n  \"opening_reading\": 10000,\n  \"closing_reading\": 10500,\n  \"liters_sold\": 500,\n  \"price_per_liter\": 1.45,\n  \"amount\": 725.00,\n  \"recorded_at\": \"2026-08-25T10:00:00Z\"\n}",
+              "raw": "{\n  \"nozzle_id\": 1,\n  \"closing_reading\": 10500,\n  \"recorded_at\": \"2026-08-25T10:00:00Z\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

@@ -18,19 +18,44 @@ class NozzleReadingService
     /**
      * Record a nozzle reading (opening/closing) and post stock + payment ledger entries
      */
-    public function recordReading(array $data, int $userId): NozzleReading
+    public function recordReading(array $data, int $nozzleId, int $userId): NozzleReading
     {
-        return DB::transaction(function () use ($data, $userId) {
-            // Compute derived values
-            $data['liters_sold'] = $data['closing_reading'] - $data['opening_reading'];
-            $data['amount'] = $data['liters_sold'] * $data['price_per_liter'];
-            $data['user_id'] = $userId;
+        return DB::transaction(function () use ($data, $nozzleId, $userId) {
+            $nozzle = Nozzle::with('tank.fuelType')->findOrFail($nozzleId);
+
+            // Auto-calculate opening_reading from latest reading's closing_reading (or 0 if none)
+            $latestReading = $this->getLatestReading($nozzle->id);
+            $openingReading = $latestReading ? $latestReading->closing_reading : 0;
+
+            // Validate closing_reading >= opening_reading
+            $closingReading = $data['closing_reading'];
+            if ($closingReading < $openingReading) {
+                throw new \InvalidArgumentException(
+                    "Closing reading ($closingReading) cannot be less than opening reading ($openingReading)"
+                );
+            }
+
+            // Calculate derived values
+            $litersSold = $closingReading - $openingReading;
+            $pricePerLiter = $nozzle->tank->fuelType->current_price ?? 0;
+            $amount = $litersSold * $pricePerLiter;
+
+            // Prepare reading data
+            $readingData = [
+                'nozzle_id' => $nozzleId,
+                'user_id' => $userId,
+                'opening_reading' => $openingReading,
+                'closing_reading' => $closingReading,
+                'liters_sold' => $litersSold,
+                'price_per_liter' => $pricePerLiter,
+                'amount' => $amount,
+                'recorded_at' => $data['recorded_at'] ?? now(),
+            ];
 
             // Create the nozzle reading
-            $reading = NozzleReading::create($data);
+            $reading = NozzleReading::create($readingData);
 
             // Post stock transaction for tank stock-out (fuel sale)
-            $nozzle = Nozzle::with('tank')->findOrFail($reading->nozzle_id);
             $tank = $nozzle->tank;
 
             $this->stockTransactionService->append(
@@ -45,7 +70,7 @@ class NozzleReadingService
             // Post payment transaction for revenue (income)
             // Use walk-in customer account or station revenue account
             $revenueAccount = $this->getOrCreateRevenueAccount();
-            
+
             $this->paymentTransactionService->append(
                 accountId: $revenueAccount->id,
                 type: 'income',

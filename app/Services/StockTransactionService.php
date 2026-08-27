@@ -24,17 +24,9 @@ class StockTransactionService
 
         return DB::transaction(function () use ($stockable, $quantity, $unit, $userId, $sourceFK, $remarks) {
             // Calculate balance after this transaction
-            // Use short morph key from morph map (Tank, Product, FuelType)
-            $stockableType = $this->getMorphKey($stockable);
-            
-            $lastBalance = StockTransaction::where('stockable_type', $stockableType)
-                ->where('stockable_id', $stockable->id)
-                ->latest()
-                ->value('balance_after') ?? 0;
+            $lastBalance = $stockable->stockTransactions()->latest()->value('balance_after') ?? 0;
 
-            return StockTransaction::create(array_merge([
-                'stockable_type' => $stockableType,
-                'stockable_id'   => $stockable->id,
+            return $stockable->stockTransactions()->create(array_merge([
                 'quantity'       => $quantity,
                 'unit'           => $unit,
                 'balance_after'  => $lastBalance + $quantity,
@@ -42,21 +34,6 @@ class StockTransactionService
                 'remarks'        => $remarks,
             ], $sourceFK));
         });
-    }
-
-    /**
-     * Get the short morph key for a model (Tank, Product, FuelType)
-     */
-    private function getMorphKey(Model $model): string
-    {
-        $class = get_class($model);
-        $morphMap = [
-            \App\Models\Tank::class => 'Tank',
-            \App\Models\Product::class => 'Product',
-            \App\Models\FuelType::class => 'FuelType',
-        ];
-        
-        return $morphMap[$class] ?? $class;
     }
 
     /**

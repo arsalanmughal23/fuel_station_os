@@ -9,9 +9,7 @@ use App\Services\NozzleReadingService;
 
 class NozzleReadingController extends Controller
 {
-    public function __construct(private readonly NozzleReadingService $service)
-    {
-    }
+    public function __construct(private readonly NozzleReadingService $service) {}
 
     public function index()
     {
@@ -25,6 +23,6 @@ class NozzleReadingController extends Controller
 
     public function store(StoreNozzleReadingRequest $request)
     {
-        return new NozzleReadingResource($this->service->recordReading($request->validated(), auth()->id()));
+        return new NozzleReadingResource($this->service->recordReading($request->validated(), $request->nozzle_id, auth()->id()));
     }
 }
