@@ -10,9 +10,7 @@ use App\Services\NozzleService;
 
 class NozzleController extends Controller
 {
-    public function __construct(private readonly NozzleService $service)
-    {
-    }
+    public function __construct(private readonly NozzleService $service) {}
 
     public function index()
     {
