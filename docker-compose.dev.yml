@@ -1,0 +1,137 @@
+version: '3.8'
+
+# Development Docker Compose for Fuel Station OS
+# Backend (FrankenPHP + Octane) + Queue + Scheduler + Nginx
+# Frontend runs on host via `pnpm tauri dev` connecting to localhost:8000
+
+services:
+  # PHP Application (Laravel + FrankenPHP + Octane) - Development
+  backend:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: laravel-backend-dev
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    volumes:
+      # Source code with delegated mount for hot reload
+      - ./backend:/var/www/html:delegated
+      # Vendor directory as named volume (avoids permission issues)
+      - vendor_data:/var/www/html/vendor
+      # Storage for logs, database, cache
+      - ./backend/storage:/var/www/html/storage:delegated
+      # Composer cache for faster installs
+      - composer_cache:/tmp/composer-cache
+      # Mount config for live updates
+      - ./backend/config/octane.php:/var/www/html/config/octane.php:ro
+    environment:
+      - COMPOSER_HOME=/tmp/composer-cache
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - OCTANE_SERVER=frankenphp
+      - OCTANE_WATCH_ENABLED=false
+    ports:
+      - "8000:8000"
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    stdin_open: true
+    tty: true
+    command: php artisan octane:start --server=frankenphp --host=0.0.0.0 --port=8000
+
+  # Queue Worker - Development
+  queue:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: laravel-queue-dev
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    volumes:
+      - ./backend:/var/www/html:delegated
+      - vendor_data:/var/www/html/vendor
+      - ./backend/storage:/var/www/html/storage:delegated
+      - ./docker/php/healthcheck-queue.sh:/healthcheck-queue.sh:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Waiting for migrations...' &&
+        while ! php artisan migrate --force --no-interaction 2>/dev/null; do
+          sleep 2;
+        done &&
+        echo 'Starting queue worker...' &&
+        php artisan queue:work --verbose --tries=3 --timeout=90 --sleep=3
+      "
+    healthcheck:
+      test: ["CMD", "/healthcheck-queue.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - default
+
+  # Scheduler - Development
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: laravel-scheduler-dev
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    volumes:
+      - ./backend:/var/www/html:delegated
+      - vendor_data:/var/www/html/vendor
+      - ./backend/storage:/var/www/html/storage:delegated
+      - ./docker/php/healthcheck-scheduler.sh:/healthcheck-scheduler.sh:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    healthcheck:
+      test: ["CMD", "/healthcheck-scheduler.sh"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - default
+
+  # Nginx Reverse Proxy - Development (optional, for prod-like routing)
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-server-dev
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./backend:/var/www/html:delegated
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - default
+
+# Volumes
+volumes:
+  composer_cache:
+  nginx_logs:
+  vendor_data:
+
+# Networks
+networks:
+  default:
+    name: fuel_station_network_dev
+    driver: bridge

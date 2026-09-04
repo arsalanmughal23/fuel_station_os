@@ -1,74 +1,64 @@
 # Git
-.git/
+.git
 .gitignore
-.gitattributes
-
-# Docker
-.docker/
-docker-compose*.yml
-Dockerfile*
-
-# Environment
-.env
-.env.*
-!.env.example
 
 # Dependencies
-/vendor/
-/node_modules/
-/frontend/node_modules/
-/frontend/.nuxt/
-/frontend/.output/
-/frontend/dist/
-/frontend/.pnpm-store/
+node_modules
+vendor
+backend/vendor
 
-# Storage
-/storage/*.key
-/storage/logs/*.log
-/storage/app/public/
-/storage/framework/cache/
-/storage/framework/sessions/
-/storage/framework/views/
-!/storage/logs/.gitkeep
-
-# Cache
-/bootstrap/cache/*.php
-!/bootstrap/cache/.gitkeep
-
-# Logs
+# Build outputs
+dist
+build
 *.log
-*.sqlite
-*.sqlite-journal
+*.tmp
 
 # IDE
-.idea/
-.vscode/
+.vscode
+.idea
 *.swp
-*.swo
-*~
+
+# OS
 .DS_Store
 Thumbs.db
 
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Cache
+.pnpm-store
+.pnpm-home
+.cache
+
 # Testing
-.coverage
-.phpunit.result.cache
-phpunit.xml
-/tests/
+coverage
+*.lcov
 
-# Build
-public/hot
-public/storage
-Homestead.json
-Homestead.yaml
-auth.json
+# Tauri
+src-tauri/target
+src-tauri/.cargo
 
-# Documentation
+# Frontend (exclude entire frontend - not needed for backend build)
+frontend/
+
+# Backend
+backend/storage/logs/*
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/bootstrap/cache/*.php
+
+# Large files
+*.sqlite
+*.sqlite.backup_*
+fuelstationos_erd_v4.mermaid
+
+# Documentation (not needed in build)
 *.md
 !README.md
-
-# Project-specific files to exclude
-combined_prompt.txt
-fuelstationos_erd_v4.mermaid
-implementation_plan*.md
-recommended-structure.txt
-*.mermaid

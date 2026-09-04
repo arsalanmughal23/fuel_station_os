@@ -1,5 +1,5 @@
 # System Architecture
-**Version:** 3.1 (ERD v4 — Final) | **Last Updated:** August 2026
+**Version:** 4.0 (Tauri + FrankenPHP Sidecar) | **Last Updated:** August 2026
 
 ---
 
@@ -10,24 +10,75 @@
 | Frontend | Nuxt 3 (Vue 3) |
 | Auth | Laravel Sanctum |
 | RBAC | `spatie/laravel-permission` |
-| Database | SQLite (embedded, single-file) |
-| Desktop Wrapper | NativePHP + Tauri adapter |
-| Containerization | Docker + Docker Compose |
+| Database | SQLite (embedded, single-file, WAL mode) |
+| Desktop Wrapper | **Tauri (Rust) + FrankenPHP Sidecar** |
+| Containerization | Docker + Docker Compose (dev only) |
 | Queue | Laravel Queue (`database` driver) |
+| PHP Runtime | **FrankenPHP (via Laravel Octane)** |
+
+> **Architecture Shift:** Moved from `NativePHP + Tauri adapter` → **Tauri manages frontend + FrankenPHP sidecar**. Single executable bundles Laravel backend (via FrankenPHP worker) + Nuxt 3 frontend.
 
 ---
 
-## Docker Services (`docker-compose.yml`)
+## Project Structure (Post-Migration)
+```
+/var/www/html/fuel_station_os/
+├── backend/                    # Laravel backend (moved from root)
+│   ├── app/
+│   ├── bootstrap/
+│   ├── config/
+│   ├── database/
+│   ├── public/
+│   ├── routes/
+│   ├── storage/
+│   ├── resources/
+│   ├── Caddyfile               # FrankenPHP config
+│   ├── frankenphp-worker.php   # Worker entry point
+│   ├── composer.json
+│   └── .env.example
+├── frontend/                   # Nuxt 3 + Tauri
+│   ├── package.json
+│   ├── nuxt.config.ts
+│   ├── src-tauri/
+│   │   ├── src/
+│   │   │   ├── main.rs
+│   │   │   ├── sidecar.rs
+│   │   │   └── commands/
+│   │   ├── Cargo.toml
+│   │   └── tauri.conf.json
+├── build/
+│   ├── scripts/
+│   │   ├── build-sidecar.sh
+│   │   └── package-installer.sh
+│   └── installers/
+│       ├── windows.nsi
+│       ├── macos.dmg
+│       └── linux/
+├── docker/
+│   ├── php/Dockerfile
+│   ├── node/Dockerfile
+│   └── nginx/default.conf
+├── docker-compose.dev.yml      # Development: Docker backend + host frontend
+├── docker-compose.prod.yml     # Production: Single container (optional)
+└── README.md
+```
+
+---
+
+## Docker Services (`docker-compose.dev.yml`)
 | Service | Description | Port |
 |---|---|---|
-| `app` | Laravel PHP-FPM backend | 9000 (internal only) |
-| `nginx` | Reverse proxy | 8000 (external) |
-| `frontend` | Nuxt 3 dev server | 3000 |
+| `backend` | Laravel + FrankenPHP (Octane) | 8000 (external) |
 | `queue` | Laravel queue worker | — |
+| `scheduler` | Laravel scheduler | — |
+| `nginx` | Reverse proxy (prod-like) | 80 |
+| `frontend` | Nuxt 3 dev server (host) | 3000 |
 
-**Key volumes:**
-- `./backend:/var/www/html/backend` — Laravel source
-- `./frontend:/var/www/html/frontend` — Nuxt source
+**Key volumes (dev):**
+- `./backend:/var/www/html:delegated` — Laravel source
+- `./vendor:/var/www/html/vendor` — Composer vendor
+
+> **Production** uses **no Docker** — single Tauri executable bundles FrankenPHP sidecar + compiled frontend.
 
 ---
 
@@ -206,7 +257,7 @@ All services live flat in `app/Services/` (not in subdirectories).
 
 ### `StockTransactionService` (Core Ledger Pattern)
 ```php
-// app/Services/Ledger/StockTransactionService.php
+// backend/app/Services/StockTransactionService.php
 class StockTransactionService
 {
     public function append(

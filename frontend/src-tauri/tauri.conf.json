@@ -1,0 +1,91 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "FuelStationOS",
+  "version": "0.1.0",
+  "identifier": "com.fuelstationos.desktop",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "FuelStationOS",
+        "width": 1280,
+        "height": 720,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "minWidth": 800,
+        "minHeight": 600,
+        "visible": true,
+        "decorations": true,
+        "transparent": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000 http://localhost:1420 ws://localhost:1420; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; frame-src 'self';"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "deb",
+      "rpm"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "resources"
+    ],
+    "copyright": "© 2024 FuelStationOS Team",
+    "category": "Business",
+    "shortDescription": "Fuel Station Management",
+    "longDescription": "Fuel Station Management System Desktop Application",
+    "linux": {
+      "deb": {
+        "depends": [
+          "sqlite3",
+          "libsqlite3-0",
+          "php-cli",
+          "php-pcntl",
+          "php-mbstring",
+          "php-xml",
+          "php-bcmath",
+          "php-json",
+          "php-tokenizer",
+          "php-ctype",
+          "php-fileinfo",
+          "php-pdo",
+          "php-pdo-sqlite"
+        ]
+      },
+      "appimage": {
+        "bundleMediaFramework": true
+      }
+    },
+    "windows": {
+      "nsis": {}
+    },
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.15",
+      "exceptionDomain": "localhost"
+    }
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    },
+    "process": {
+      "open": true
+    }
+  }
+}

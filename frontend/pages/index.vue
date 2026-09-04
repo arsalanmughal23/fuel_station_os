@@ -1,50 +1,27 @@
 <template>
-  <div class="container">
-    <h1>Fuel Station OS</h1>
-    <p>Welcome to the Fuel Station Management System</p>
-    
-    <div class="api-test">
-      <h2>API Test</h2>
-      <button @click="testApi">Test API Connection</button>
-      <div v-if="apiResult" class="result">
-        <pre>{{ JSON.stringify(apiResult, null, 2) }}</pre>
+  <div class="px-4 py-6 sm:px-0">
+    <div class="border-4 border-dashed border-gray-200 rounded-lg p-8">
+      <h2 class="text-2xl font-semibold text-gray-700">Welcome to Fuel Station OS</h2>
+      <p class="mt-4 text-gray-600">Your fuel station management system</p>
+      
+      <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-lg shadow">
+          <h3 class="text-lg font-medium text-gray-900">POS Terminal</h3>
+          <p class="mt-2 text-gray-600">Process fuel sales and payments</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+          <h3 class="text-lg font-medium text-gray-900">Inventory</h3>
+          <p class="mt-2 text-gray-600">Manage fuel stock and supplies</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+          <h3 class="text-lg font-medium text-gray-900">Reports</h3>
+          <p class="mt-2 text-gray-600">View sales and inventory reports</p>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-const config = useRuntimeConfig()
-const apiResult = ref<any>(null)
-
-const testApi = async () => {
-  try {
-    const response = await $fetch(`${config.public.apiBaseUrl}/health`)
-    apiResult.value = response
-  } catch (error) {
-    apiResult.value = { error: 'Failed to connect to API', details: error }
-  }
-}
+// Home page
 </script>
-
-<style scoped>
-.container {
-  padding: 2rem;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.api-test {
-  margin-top: 2rem;
-  padding: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-}
-
-.result {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: #f5f5f5;
-  border-radius: 4px;
-}
-</style>

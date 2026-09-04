@@ -1,0 +1,28 @@
+[package]
+name = "fuel_station_os"
+version = "0.1.0"
+description = "Fuel Station Management OS"
+authors = ["FuelStationOS Team"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-process = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full", "macros", "rt-multi-thread"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "1.0"
+anyhow = "1.0"
+dirs = "5.0"
+sysinfo = "0.30"
+chrono = { version = "0.4", features = ["serde"] }

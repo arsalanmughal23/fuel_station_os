@@ -1,5 +1,5 @@
 services:
-  # PHP Application (Laravel backend)
+  # PHP Application (Laravel + FrankenPHP + Octane)
   backend:
     build:
       context: .
@@ -7,21 +7,24 @@ services:
     container_name: laravel-backend
     restart: unless-stopped
     env_file:
-      - .env
+      - backend/.env
     volumes:
-      - ./:/var/www/html:delegated
-      - ./vendor:/var/www/html/vendor
-      - ./storage:/var/www/html/storage:delegated
+      - ./backend:/var/www/html:delegated
+      - ./backend/storage:/var/www/html/storage:delegated
     environment:
       - COMPOSER_HOME=/tmp/composer-cache
+      - OCTANE_SERVER=frankenphp
     networks:
       - default
     healthcheck:
-      test: ["CMD", "php-fpm", "-t"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    ports:
+      - "8000:8000"
+    command: php artisan octane:start --server=frankenphp --host=0.0.0.0 --port=8000
 
   # Queue Worker
   queue:
@@ -30,10 +33,11 @@ services:
       dockerfile: docker/php/Dockerfile
     container_name: laravel-queue
     restart: unless-stopped
+    env_file:
+      - backend/.env
     volumes:
-      - ./:/var/www/html:delegated
-      - ./vendor:/var/www/html/vendor
-      - ./storage:/var/www/html/storage:delegated
+      - ./backend:/var/www/html:delegated
+      - ./backend/storage:/var/www/html/storage:delegated
     depends_on:
       backend:
         condition: service_healthy
@@ -46,8 +50,6 @@ services:
         echo 'Starting queue worker...' &&
         php artisan queue:work --verbose --tries=3 --timeout=90 --sleep=3
       "
-    env_file:
-      - .env
     networks:
       - default
 
@@ -57,16 +59,15 @@ services:
       dockerfile: docker/php/Dockerfile
     container_name: laravel-scheduler
     restart: unless-stopped
+    env_file:
+      - backend/.env
     volumes:
-      - ./:/var/www/html:delegated
-      - ./vendor:/var/www/html/vendor
-      - ./storage:/var/www/html/storage:delegated
+      - ./backend:/var/www/html:delegated
+      - ./backend/storage:/var/www/html/storage:delegated
     depends_on:
       backend:
         condition: service_healthy
     command: sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
-    env_file:
-      - .env
     networks:
       - default
 
@@ -77,7 +78,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./:/var/www/html:delegated
+      - ./backend:/var/www/html:delegated
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       backend:
@@ -107,5 +108,5 @@ services:
 
 networks:
   default:
-    name: desktop_app_network
+    name: fuel_station_network
     driver: bridge
