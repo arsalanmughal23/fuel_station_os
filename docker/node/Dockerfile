@@ -13,7 +13,10 @@ COPY frontend/pnpm-lock.yaml ./
 # Install pnpm
 RUN npm install -g pnpm
 
-# Install dependencies (allow updating lockfile for development)
+# Configure pnpm to allow esbuild builds via .npmrc
+RUN echo "allow-build-scripts=esbuild" > .npmrc
+
+# Install dependencies
 RUN pnpm install
 
 # Copy source code

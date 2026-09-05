@@ -1,59 +1,197 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# FuelStationOS
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <strong>Single-station desktop fuel management system with append-only ledger architecture</strong>
 </p>
 
-## About Laravel
+<p align="center">
+  <a href="#tech-stack"><img src="https://img.shields.io/badge/stack-Laravel%2012%20%7C%20Nuxt%203%20%7C%20Tauri%20%7C%20FrankenPHP-blue" alt="Tech Stack"></a>
+  <a href="#architecture"><img src="https://img.shields.io/badge/architecture-append--only%20ledger-green" alt="Architecture"></a>
+  <a href="#database"><img src="https://img.shields.io/badge/database-SQLite%20(WAL)-orange" alt="Database"></a>
+  <a href="#desktop"><img src="https://img.shields.io/badge/desktop-Tauri%20%2B%20FrankenPHP%20sidecar-purple" alt="Desktop"></a>
+</p>
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Overview
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+FuelStationOS is a **single-station desktop application** for managing fuel station operations — tanks, nozzles, fuel sales, shop inventory, procurement, accounts, and reporting. Built as a **local-first desktop app** with an embedded SQLite database and **Tauri + FrankenPHP sidecar** architecture for a single executable installer (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`).
 
-## Learning Laravel
+**Key capabilities:**
+- **Fuel Setup** — Tanks, nozzles, calibration charts (dip cm → liters), fuel types
+- **Operations** — Nozzle readings (opening/closing), deep readings (physical dips)
+- **Sales & POS** — Fuel + shop products, multiple payment methods, receipts
+- **Shop Inventory** — Products, pricing, price history, stock adjustments
+- **Procurement** — Purchase orders, fuel deliveries, stock-in ledger
+- **Accounts** — Distributors, customers, employees, owner with payment ledger
+- **Reporting** — Dashboard KPIs, daily/monthly sales, volume, variance, delivery reports
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Tech Stack
 
-## Laravel Sponsors
+| Layer | Technology |
+|-------|------------|
+| **Backend** | Laravel 12 (PHP 8.4+) |
+| **Frontend** | Nuxt 3 (Vue 3) |
+| **Auth** | Laravel Sanctum (token-based) |
+| **RBAC** | `spatie/laravel-permission` |
+| **Database** | SQLite (embedded, WAL mode, single file) |
+| **Desktop Wrapper** | **Tauri (Rust) + FrankenPHP Sidecar** |
+| **PHP Runtime** | FrankenPHP via Laravel Octane (long-running worker) |
+| **Containerization** | Docker + Docker Compose (development only) |
+| **Queue** | Laravel Queue (`database` driver) |
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+> **Production:** No Docker. Single Tauri executable bundles FrankenPHP sidecar + compiled Nuxt frontend.
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Architecture
 
-## Contributing
+### Project Structure (Post-Migration)
+```
+fuel_station_os/
+├── backend/                    # Laravel backend
+│   ├── app/
+│   ├── bootstrap/
+│   ├── config/
+│   ├── database/
+│   ├── public/
+│   ├── routes/
+│   ├── storage/
+│   ├── resources/
+│   ├── Caddyfile               # FrankenPHP config
+│   ├── frankenphp-worker.php   # Sidecar worker entry point
+│   ├── composer.json
+│   └── .env.example
+├── frontend/                   # Nuxt 3 + Tauri
+│   ├── src-tauri/
+│   │   ├── src/
+│   │   │   ├── main.rs
+│   │   │   ├── sidecar.rs
+│   │   │   └── commands/
+│   │   ├── Cargo.toml
+│   │   └── tauri.conf.json
+├── build/                      # Build & packaging scripts
+│   ├── scripts/
+│   │   ├── build-sidecar.sh
+│   │   └── package-installer.sh
+│   └── installers/
+│       ├── windows.nsi
+│       ├── macos.dmg
+│       └── linux/
+├── docker/                     # Dev Docker files
+├── docker-compose.dev.yml      # Development: Docker backend + host frontend
+└── README.md
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Core Architectural Principles
+1. **Append-only ledgers** — `stock_transactions` and `payment_transactions` are immutable; reversals via new rows
+2. **Polymorphic relationships** — `stockable` (Tank/Product), `priceable` (FuelType/Product)
+3. **XOR constraints** — Enforced via SQLite triggers (exactly one FK set per ledger row)
+4. **Derived columns** — `calculated_stock`, `current_balance` synced via model events
+5. **Services own business logic** — Controllers are thin HTTP adapters only
 
-## Code of Conduct
+📖 **Full architecture details:** [`Architecture.md`](./Architecture.md)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## Database Schema (21 Tables)
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+| # | Table | Purpose |
+|---|-------|---------|
+| 1 | `users` | System users |
+| 2-5 | `roles`, `permissions`, `model_has_roles`, `model_has_permissions` | Spatie RBAC |
+| 6 | `fuel_types` | Petrol, Diesel, CNG, etc. |
+| 7 | `tanks` | Underground storage tanks |
+| 8 | `tank_calibrations` | Dip chart: cm → liters |
+| 9 | `deep_readings` | Physical dip measurements |
+| 10 | `nozzles` | Dispensing nozzles |
+| 11 | `nozzle_readings` | Opening/closing meter readings |
+| 12 | `accounts` | Distributors, customers, employees, owner |
+| 13 | `purchase_orders` | Fuel purchase orders |
+| 14 | `deliveries` | Fuel delivery records |
+| 15 | `products` | Shop items (lubricants, accessories, etc.) |
+| 16 | `sales` | Sale transactions |
+| 17 | `sale_items` | Line items (fuel XOR product) |
+| 18 | `stock_adjustments` | Polymorphic inventory adjustments |
+| 19 | `stock_transactions` | **Append-only inventory ledger** |
+| 20 | `payment_transactions` | **Append-only payment ledger** |
+| 21 | `price_history` | Polymorphic price change log |
+
+📖 **Visual ERD:** [`fuelstationos_erd_v4.mermaid`](./fuelstationos_erd_v4.mermaid)
+
+---
+
+## Development Workflow
+
+### Prerequisites
+- Docker + Docker Compose
+- Node.js 20+ & pnpm (for frontend development)
+- Rust toolchain (for Tauri development)
+
+### Start Development Environment
+```bash
+# Terminal 1: Start Docker backend (FrankenPHP + queue + scheduler + nginx)
+make dev
+
+# Terminal 2: Start Tauri frontend (connects to http://localhost:8000)
+cd frontend && pnpm tauri dev
+```
+
+### Development Commands
+```bash
+make dev              # Start Docker dev stack
+make dev-down         # Stop Docker dev stack
+make test             # Run PHP tests
+make lint             # Run PHP linting
+cd frontend && pnpm dev      # Nuxt dev server only
+cd frontend && pnpm tauri dev # Tauri dev (connects to Docker backend)
+```
+
+---
+
+## Production Build
+
+### Single Executable Installer
+```bash
+# Build everything (Laravel optimized, Nuxt built, Tauri compiled)
+./build/scripts/build-sidecar.sh build
+
+# Package installers for all platforms
+./build/scripts/package-installer.sh all
+```
+
+**Outputs:**
+- **Windows:** `fuel-station-os-setup.exe` (NSIS)
+- **macOS:** `FuelStationOS.dmg` + `.app` bundle
+- **Linux:** `FuelStationOS.AppImage` + `.deb`
+
+### Database Backup/Restore (User Workflow)
+1. **Backup:** Click "Backup" in app → Save `.sqlite` file to USB
+2. **Restore:** Fresh install → Click "Restore" → Select `.sqlite` from USB → App reloads with data
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [`Architecture.md`](./Architecture.md) | System architecture, tech stack, database schema, service layer |
+| [`Tasks.md`](./Tasks.md) | Progress tracker, phases, checklists, next steps |
+| [`Decisions.md`](./Decisions.md) | Key architectural decisions (immutable rules) |
+| [`PRD.md`](./PRD.md) | Product requirements document |
+| [`TAURI_FRANKENPHP_IMPLEMENTATION_PLAN.md`](./TAURI_FRANKENPHP_IMPLEMENTATION_PLAN.md) | Detailed migration plan for Tauri + FrankenPHP |
+| [`fuelstationos_erd_v4.mermaid`](./fuelstationos_erd_v4.mermaid) | Visual ERD with all columns, FKs, constraints |
+
+---
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+MIT License — see [`LICENSE`](./LICENSE) for details.
+
+---
+
+## Contributing
+
+This is a single-station desktop fuel management system. See [`Tasks.md`](./Tasks.md) for current progress and [`Decisions.md`](./Decisions.md) for architectural constraints before contributing.

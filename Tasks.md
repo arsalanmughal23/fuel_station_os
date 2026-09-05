@@ -1,5 +1,5 @@
 # Tasks — Progress Tracker
-**Last Audit:** August 10, 2026 | **Overall Progress: ~45%**
+**Last Audit:** August 2026 | **Overall Progress: ~45%** (pre-migration baseline)
 
 ## Status Legend
 | Symbol | Meaning |
@@ -21,9 +21,11 @@
 | No `delivery_items` table | Delivery is one record per tank fill in ERD v4 |
 | Polymorphic `stock_transactions` | Single ledger for both fuel tanks and shop products |
 | `payment_transactions.sale_id` FK | Revenue links to Sale (not NozzleReading) |
-| SQLite embedded | Desktop app; no DB server needed; single file = easy backup |
-| Docker | Reproducible dev + prod; no local PHP/Node setup required |
+| SQLite embedded (WAL mode) | Desktop app; no DB server needed; single file = easy backup |
+| Docker (dev only) | Reproducible dev; **production uses single Tauri executable** |
 | Append-only ledgers | Immutable audit trail; reversals via new rows only |
+| **FrankenPHP sidecar (Octane)** | Long-running PHP worker; Tauri manages lifecycle |
+| **Tauri + Rust frontend** | Single executable installer (Windows/macOS/Linux) |
 
 ---
 
@@ -38,14 +40,14 @@
 
 ---
 
-## Phase 1 — Docker & Infrastructure
-- `[x]` `docker-compose.yml` with `app`, `nginx`, `frontend`, `queue` services
-- `[x]` PHP 8.4 Dockerfile with Composer
+## Phase 1 — Docker & Infrastructure (Dev Environment)
+- `[x]` `docker-compose.dev.yml` with `backend`, `nginx`, `queue`, `scheduler` services
+- `[x]` PHP 8.4 Dockerfile with Composer (WORKDIR `/var/www/html/backend`)
 - `[x]` Node 20 Dockerfile for Nuxt 3 (`pnpm install --frozen-lockfile`)
 - `[x]` Nginx config routing API → Laravel, `/` → Nuxt
 - `[x]` Prod multi-stage Dockerfile with OPcache and non-root user
 - `[x]` PHP-FPM port 9000 NOT exposed to host
-- `[x]` Prod compose standalone (not dev overlay)
+- `[x]` Prod compose standalone (not dev overlay) — **deprecated for Tauri executable**
 - `[x]` `.dockerignore` exclusions
 - `[/]` Composer layer caching — fixed in prod; **dev Dockerfile still copies all files before `composer install`**
 - `[/]` Volume conflict in dev compose — simplified; vendor bind still redundant
@@ -53,6 +55,7 @@
 - `[ ]` Nginx SSL/TLS + rate limiting
 - `[ ]` Fix `NUXT_PUBLIC_API_BASE_URL` env duplication in compose
 - `[ ]` Nginx `server_name localhost` → support custom domains
+- `[ ]` **Switch backend service to FrankenPHP (Octane) in docker-compose.dev.yml**
 
 ---
 
@@ -145,10 +148,69 @@
 
 ---
 
-## Phase 7 — Desktop Wrapper (Tauri)
-- `[ ]` `frontend/src-tauri/` scaffold
-- `[ ]` `build-desktop.sh`
-- `[ ]` IPC strategy + auto-updater
+## Phase 7 — Backend Migration to `backend/` Directory
+- `[ ]` Create `backend/` directory and move all Laravel files (app, bootstrap, config, database, public, routes, storage, resources, artisan, composer.json, composer.lock, phpunit.xml)
+- `[ ]` Update `bootstrap/app.php` paths for new location
+- `[ ]` Update `composer.json` autoload paths
+- `[ ]` Update `public/index.php` autoload path
+- `[ ]` Update `artisan` shebang if needed
+- `[ ]` Update `docker/php/Dockerfile` WORKDIR to `/var/www/html/backend`
+- `[ ]` Update volume mounts in `docker-compose.dev.yml` to use `./backend`
+- `[ ]` Update `Makefile` paths for new structure
+
+---
+
+## Phase 8 — FrankenPHP Sidecar (Backend)
+- `[ ]` Create `backend/Caddyfile` — FrankenPHP config with CORS, health endpoint
+- `[ ]` Create `backend/frankenphp-worker.php` — Long-running PHP worker for stdin/stdout communication
+- `[ ]` Add `laravel/octane` to `backend/composer.json`
+- `[ ]` Run `php artisan octane:install --server=frankenphp`
+- `[ ]` Configure Octane for FrankenPHP (workers, max requests, watch)
+- `[ ]` Test FrankenPHP worker locally (`php frankenphp-worker.php`)
+- `[ ]` Update `docker-compose.dev.yml` backend service to use FrankenPHP (port 8000)
+
+---
+
+## Phase 9 — Tauri Sidecar Management (Rust)
+- `[ ]` Create `src-tauri/src/sidecar.rs` — Sidecar manager (find backend dir, find PHP binary, start/stop worker)
+- `[ ]` Create `src-tauri/src/main.rs` — Entry point + Tauri commands (start/stop sidecar, backup/restore DB, system info)
+- `[ ]` Update `src-tauri/tauri.conf.json` — Configure sidecar external binary, bundle resources, CSP, externalBin `php`
+- `[ ]` Update `src-tauri/Cargo.toml` — Add Tauri v2 dependencies, sidecar plugin
+- `[ ]` Implement database backup/restore Tauri commands (file dialogs, API calls)
+
+---
+
+## Phase 10 — Database Backup/Restore Flow
+- `[ ]` Create `backend/app/Http/Controllers/DatabaseController.php` — API endpoints (info, backup, restore, list)
+- `[ ]` Add database routes to `backend/routes/api.php`
+- `[ ]` Frontend integration — Tauri composable for backup/restore dialogs
+- `[ ]` Test backup → download `.sqlite` → restore on fresh install
+
+---
+
+## Phase 11 — Development Workflow
+- `[ ]` Create `docker-compose.dev.yml` with backend (FrankenPHP), queue, scheduler, nginx
+- `[ ]` Document dev workflow: `make dev` (Docker backend) + `pnpm tauri dev` (frontend connects to localhost:8000)
+- `[ ]` Test `make dev` + `pnpm tauri dev` end-to-end
+- `[ ]` Verify hot reload works for both backend (FrankenPHP watch) and frontend (Nuxt)
+
+---
+
+## Phase 12 — Production Build & Packaging
+- `[ ]` Create `build/scripts/build-sidecar.sh` — Build Laravel (composer --no-dev + optimizations), frontend (pnpm build), Tauri (cargo build --release)
+- `[ ]` Create `build/scripts/package-installer.sh` — NSIS (.exe), DMG (.app), AppImage/.deb
+- `[ ]` Create installer configs: `build/installers/windows.nsi`, `macos.dmg`, `linux/`
+- `[ ]` Configure `tauri.conf.json` bundle resources (backend/**, exclude vendor, storage/logs)
+- `[ ]` Test production build on all 3 platforms
+- `[ ]` Verify single executable runs without Docker
+
+---
+
+## Phase 13 — Tauri Desktop Wrapper (Final)
+- `[ ]` `frontend/src-tauri/` scaffold complete
+- `[ ]` IPC strategy + auto-updater configured
+- `[ ]` App icon set
+- `[ ]` End-to-end test: installer → launch → backup → restore → data integrity
 
 ---
 
@@ -214,17 +276,20 @@
 - `[ ]` Database backup schedule (`spatie/laravel-backup`)
 - `[ ]` Queue failure alerting
 
-### Tauri (Desktop Wrapper)
-- `[ ]` `frontend/src-tauri/` with `tauri.conf.json`, `main.rs`, `Cargo.toml`
-- `[ ]` `build-desktop.sh` working
+### Tauri (Desktop Wrapper) — FrankenPHP Sidecar
+- `[ ]` `frontend/src-tauri/` with `tauri.conf.json`, `main.rs`, `Cargo.toml`, `sidecar.rs`, `commands/`
+- `[ ]` `build/scripts/build-sidecar.sh` working
+- `[ ]` `build/scripts/package-installer.sh` working
 - `[ ]` IPC communication strategy defined
 - `[ ]` Auto-updater configured
 - `[ ]` App icon set
+- `[ ]` Database backup/restore via Tauri commands
+- `[ ]` Single executable verified on Windows/macOS/Linux
 
 ---
 
 ## Recommended Next Steps (Priority Order)
-1. `[ ]` Register `routes/api.php` in `bootstrap/app.php`
+1. `[ ]` Register `routes/api.php` in `backend/bootstrap/app.php`
 2. `[ ]` Create `AuthController` + add `HasApiTokens` / `HasRoles` to `User` model
 3. `[ ]` Create `RoleSeeder` + update `DatabaseSeeder`
 4. `[ ]` Fix `StockTransaction.$fillable` — remove `stockable_type`/`stockable_id`
@@ -235,4 +300,10 @@
 9. `[ ]` Create Model Policies + wire authorization
 10. `[ ]` Write feature tests for auth + ledger correctness
 11. `[ ]` Frontend — Pinia auth store, `useApi`, login page
-12. `[ ]` Tauri desktop wrapper (after API is stable)
+12. `[ ]` **Phase 7: Move Laravel to `backend/` directory**
+13. `[ ]` **Phase 8: FrankenPHP sidecar setup (Caddyfile, worker, Octane)**
+14. `[ ]` **Phase 9: Tauri sidecar management (Rust)**
+15. `[ ]` **Phase 10: Database backup/restore flow**
+16. `[ ]` **Phase 11: Development workflow (Docker + Tauri dev)**
+17. `[ ]` **Phase 12: Production build & packaging**
+18. `[ ]` **Phase 13: Final Tauri wrapper verification**

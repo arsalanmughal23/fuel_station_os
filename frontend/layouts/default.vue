@@ -1,26 +1,16 @@
 <template>
-  <div>
-    <header>
-      <nav>
-        <NuxtLink to="/">Home</NuxtLink>
-      </nav>
+  <div class="min-h-screen bg-gray-100">
+    <header class="bg-white shadow">
+      <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <h1 class="text-3xl font-bold text-gray-900">Fuel Station OS</h1>
+      </div>
     </header>
-    <main>
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <slot />
     </main>
   </div>
 </template>
 
-<style scoped>
-header {
-  padding: 1rem;
-  background: #2c3e50;
-  color: white;
-}
-
-nav a {
-  color: white;
-  text-decoration: none;
-  margin-right: 1rem;
-}
-</style>
+<script setup lang="ts">
+// Layout component
+</script>

@@ -1,0 +1,36 @@
+{
+    admin off
+    log {
+        format json
+        output stdout
+    }
+}
+
+:8000 {
+    root * /var/www/html/public
+
+    # Health check (must be first to avoid being caught by file_server or php_server)
+    respond /health "OK" 200
+
+    # Laravel routes
+    @laravel {
+        path /api/*
+        path /storage/*
+        path /broadcasting/*
+    }
+    handle @laravel {
+        php_server
+    }
+
+    # PHP server for all other routes
+    php_server
+
+    # Static files (fallback)
+    file_server
+
+    # CORS headers for Tauri dev
+    header Access-Control-Allow-Origin "*"
+    header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    header Access-Control-Allow-Credentials "true"
+}

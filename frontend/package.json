@@ -1,25 +1,32 @@
 {
-  "name": "fuel-station-frontend",
-  "version": "1.0.0",
+  "name": "frontend",
+  "version": "0.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "nuxt dev --host",
+    "dev": "nuxt dev --port 1420",
     "build": "nuxt build",
-    "start": "nuxt start",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "prepare": "nuxt prepare",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "clean": "rm -rf .nuxt .output dist node_modules/.vite"
   },
   "dependencies": {
-    "nuxt": "^3.11.2",
-    "vue": "^3.4.27",
-    "vue-router": "^4.3.2"
+    "@tauri-apps/api": "^2.0.0",
+    "vue": "^3.4.0",
+    "vue-router": "^4.3.0"
   },
   "devDependencies": {
-    "@nuxt/devtools": "^1.1.5",
-    "@types/node": "^20.12.7",
-    "typescript": "^5.4.5",
-    "vue-tsc": "^2.0.19"
+    "@nuxt/types": "^2.17.0",
+    "@nuxtjs/tailwindcss": "^6.11.0",
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/node": "^20.10.0",
+    "autoprefixer": "^10.4.0",
+    "nuxt": "^3.10.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.0",
+    "vue-tsc": "^2.0.0"
   }
 }

@@ -1,0 +1,28 @@
+FROM node:20-alpine
+
+# Install build tools
+RUN apk add --no-cache git python3 make g++
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files (context is frontend directory)
+COPY package*.json ./
+COPY pnpm-lock.yaml ./
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Install dependencies WITHOUT running build scripts (for dev mode)
+# esbuild build script is ignored - Nuxt dev server handles compilation
+RUN pnpm install --ignore-scripts
+
+# Copy source code
+COPY . .
+
+# Generate Nuxt types
+RUN pnpm run postinstall || true
+
+EXPOSE 3000
+
+CMD ["pnpm", "run", "dev"]

@@ -1,35 +1,96 @@
-# Laravel
-/vendor/
-/node_modules/
-/storage/*.key
-/storage/logs/*.log
-/storage/app/public/
-/storage/framework/cache/
-/storage/framework/sessions/
-/storage/framework/views/
-/bootstrap/cache/*.php
-/public/hot
-/public/storage
-.env
-.env.backup
-.env.production
-Homestead.json
-Homestead.yaml
-auth.json
+# ============================================
+# FuelStationOS - Root .gitignore
+# Monorepo structure: backend/ (Laravel) + frontend/ (Nuxt 3 + Tauri)
+# ============================================
+
+# -------------------------
+# Root level (legacy/old)
+# -------------------------
+/src-tauri/
+
+# -------------------------
+# Backend (Laravel in backend/)
+# -------------------------
+/backend/vendor/
+/backend/node_modules/
+/backend/storage/*.key
+/backend/storage/logs/*.log
+!/backend/storage/logs/.gitkeep
+/backend/storage/app/public/
+/backend/storage/framework/cache/
+/backend/storage/framework/sessions/
+/backend/storage/framework/views/
+/backend/bootstrap/cache/*.php
+/backend/public/hot
+/backend/public/storage
+/backend/.env
+/backend/.env.backup
+/backend/.env.production
+/backend/.env.*.local
+/backend/Homestead.json
+/backend/Homestead.yaml
+/backend/auth.json
+/backend/*.sqlite
+/backend/*.sqlite-journal
+/backend/composer.phar
+
+# -------------------------
+# Frontend (Nuxt 3 + Tauri in frontend/)
+# -------------------------
+/frontend/.nuxt/
+/frontend/.output/
+/frontend/dist/
+/frontend/build/
+/frontend/node_modules/
+/frontend/.pnpm-store/
+/frontend/.env
+/frontend/.env.local
+/frontend/.env.*.local
+/frontend/*.log
+/frontend/.DS_Store
+/frontend/coverage/
+/frontend/.nyc_output/
+/frontend/*.tsbuildinfo
+
+# Tauri
+/frontend/src-tauri/target/
+/frontend/src-tauri/*.app/
+/frontend/src-tauri/*.dmg/
+/frontend/src-tauri/*.exe/
+/frontend/src-tauri/*.AppImage/
+/frontend/src-tauri/bundle/
+
+# -------------------------
+# Build & Packaging (build/)
+# -------------------------
+/build/scripts/*.log
+/build/installers/
+/build/*.log
+
+# -------------------------
+# Docker
+# -------------------------
+.docker/
+docker-compose.override.yml
+docker-compose.*.yml
+!docker-compose.dev.yml
+!docker-compose.prod.yml
+!docker-compose.yml
+
+# -------------------------
+# Database & Backups
+# -------------------------
 *.sqlite
 *.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+/backups/
+/backend/storage/database/*.sqlite
+/backend/storage/database/*.sqlite-*
 
-# PHPUnit
-.phpunit.result.cache
-phpunit.xml
-.coverage
-.buildpath
-.project
-.settings/
-*.sublime-workspace
-*.sublime-project
-
-# IDE
+# -------------------------
+# IDE & Editor
+# -------------------------
 .idea/
 .vscode/
 *.swp
@@ -38,29 +99,47 @@ phpunit.xml
 .DS_Store
 Thumbs.db
 
-# Docker
-.docker/
-docker-compose.override.yml
-
-# Frontend
-frontend/.nuxt/
-frontend/.output/
-frontend/dist/
-frontend/node_modules/
-frontend/.env
-frontend/.env.local
-frontend/*.log
-frontend/.DS_Store
-
-# Logs
+# -------------------------
+# OS & Misc
+# -------------------------
+.cargo/
+.rustup/
 *.log
-storage/logs/*.log
-!storage/logs/.gitkeep
+*.pid
+*.seed
+*.lock
 
-# Composer
-composer.phar
+# -------------------------
+# PHPUnit / Testing
+# -------------------------
+.phpunit.result.cache
+.phpunit.cache/
+.coverage
+.buildpath
+.project
+.settings/
+*.sublime-workspace
+*.sublime-project
 
-# NPM
+# -------------------------
+# NPM / Package Managers
+# -------------------------
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+!frontend/pnpm-lock.yaml
+
+# -------------------------
+# Keep these files (do not ignore)
+# -------------------------
+!.gitignore
+!.gitattributes
+!.editorconfig
+!.dockerignore
+!docker-compose.dev.yml
+!docker-compose.prod.yml
+!docker-compose.yml
+!backend/.gitignore
+!frontend/.gitignore
+!backend/.env.example
+!frontend/.env.example

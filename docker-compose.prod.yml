@@ -1,28 +1,32 @@
 services:
+  # PHP Application (Laravel + FrankenPHP + Octane) - Production
   backend:
     build:
       context: .
       dockerfile: docker/php/Dockerfile.prod
     container_name: laravel-backend-prod
     restart: always
-    # No port exposure for PHP-FPM in production
     env_file:
-      - .env.production
+      - backend/.env.production
     volumes:
       - app_storage:/var/www/html/storage
       - db_data:/var/www/html/storage/database
     environment:
       - APP_ENV=production
       - APP_DEBUG=false
+      - OCTANE_SERVER=frankenphp
       - COMPOSER_HOME=/tmp/composer-cache
     networks:
       - default
     healthcheck:
-      test: ["CMD", "php-fpm", "-t"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    ports:
+      - "8000:8000"
+    command: php artisan octane:start --server=frankenphp --host=0.0.0.0 --port=8000
     deploy:
       resources:
         limits:
@@ -30,6 +34,7 @@ services:
         reservations:
           memory: 256M
 
+  # Queue Worker
   queue:
     build:
       context: .
@@ -52,7 +57,7 @@ services:
         php artisan queue:work --verbose --tries=3 --timeout=90 --sleep=3
       "
     env_file:
-      - .env.production
+      - backend/.env.production
     networks:
       - default
     deploy:
@@ -76,7 +81,7 @@ services:
         condition: service_healthy
     command: sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
     env_file:
-      - .env.production
+      - backend/.env.production
     networks:
       - default
     deploy:
@@ -92,8 +97,9 @@ services:
     restart: always
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - ./public:/var/www/html/public:ro
+      - ./backend/public:/var/www/html/public:ro
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - nginx_logs:/var/log/nginx
     depends_on:
@@ -139,5 +145,5 @@ volumes:
 
 networks:
   default:
-    name: desktop_app_network_prod
+    name: fuel_station_network_prod
     driver: bridge

@@ -1,0 +1,56 @@
+# Backend (Laravel) - backend/.gitignore
+
+# Dependencies
+/vendor/
+/node_modules/
+
+# Laravel specific
+/storage/*.key
+/storage/logs/*.log
+!/storage/logs/.gitkeep
+/storage/app/public/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/views/
+/bootstrap/cache/*.php
+/public/hot
+/public/storage
+
+# Environment
+/.env
+/.env.backup
+/.env.production
+/.env.*.local
+
+# Homestead
+Homestead.json
+Homestead.yaml
+
+# Auth
+auth.json
+
+# Database
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# Composer
+composer.phar
+
+# PHPUnit
+.phpunit.result.cache
+.phpunit.cache/
+.coverage
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS
+*.log
