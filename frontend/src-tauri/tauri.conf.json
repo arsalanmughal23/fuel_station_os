@@ -53,18 +53,7 @@
       "deb": {
         "depends": [
           "sqlite3",
-          "libsqlite3-0",
-          "php-cli",
-          "php-pcntl",
-          "php-mbstring",
-          "php-xml",
-          "php-bcmath",
-          "php-json",
-          "php-tokenizer",
-          "php-ctype",
-          "php-fileinfo",
-          "php-pdo",
-          "php-pdo-sqlite"
+          "libsqlite3-0"
         ]
       },
       "appimage": {
